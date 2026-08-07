@@ -3908,3 +3908,920 @@ function renderSession2Complete(container, score) {
     init();
   }
 })();
+
+/* ============================================
+   MINI ORBE EN HEADERS + ORBE REACCIONA A TU VOZ
+============================================ */
+
+(function () {
+  if (window.aurixMiniHeaderInjected) {
+    return;
+  }
+
+  window.aurixMiniHeaderInjected = true;
+
+  function addMiniHeader(card) {
+    if (card.querySelector(".aurix-mini-header")) {
+      return;
+    }
+
+    var header = document.createElement("div");
+    header.className = "aurix-mini-header";
+    header.innerHTML =
+      '<span class="mini-orb"></span>' +
+      '<span class="mini-name">AURIX</span>' +
+      '<span class="mini-status">COACH</span>';
+
+    card.insertBefore(header, card.firstChild);
+  }
+
+  function scanHeaders() {
+    document.querySelectorAll(".card, .ob-card, .mic-card").forEach(addMiniHeader);
+  }
+
+  var headerTimer = null;
+
+  function scheduleHeaders() {
+    if (headerTimer) {
+      clearTimeout(headerTimer);
+    }
+
+    headerTimer = setTimeout(scanHeaders, 150);
+  }
+
+  function initHeaders() {
+    scanHeaders();
+
+    var observer = new MutationObserver(scheduleHeaders);
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initHeaders);
+  } else {
+    initHeaders();
+  }
+})();
+
+(function () {
+  if (window.aurixMicOrbHooked) {
+    return;
+  }
+
+  window.aurixMicOrbHooked = true;
+
+  var stream = null;
+  var audioCtx = null;
+  var analyser = null;
+  var raf = null;
+  var data = null;
+
+  function startListening() {
+    stopListening();
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+      stream = s;
+
+      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContextClass();
+
+      var source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      data = new Uint8Array(analyser.frequencyBinCount);
+
+      document.body.classList.add("aurix-listening");
+
+      loopEnergy();
+    }).catch(function () {
+      // Permiso denegado: no se activa el modo escucha.
+    });
+  }
+
+  function loopEnergy() {
+    if (!analyser) {
+      return;
+    }
+
+    analyser.getByteFrequencyData(data);
+
+    var sum = 0;
+
+    for (var i = 0; i < data.length; i++) {
+      sum += data[i];
+    }
+
+    var energy = Math.min(1, (sum / data.length) / 140);
+    var scale = 1 + energy * 0.18;
+
+    document.querySelectorAll(".aurix-orb, .mini-orb").forEach(function (orb) {
+      orb.style.scale = scale;
+    });
+
+    raf = requestAnimationFrame(loopEnergy);
+  }
+
+  function stopListening() {
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+
+    if (stream) {
+      stream.getTracks().forEach(function (track) {
+        track.stop();
+      });
+      stream = null;
+    }
+
+    if (audioCtx) {
+      try {
+        audioCtx.close();
+      } catch (e) {
+        // Ignorar.
+      }
+
+      audioCtx = null;
+      analyser = null;
+    }
+
+    document.body.classList.remove("aurix-listening");
+
+    document.querySelectorAll(".aurix-orb, .mini-orb").forEach(function (orb) {
+      orb.style.scale = "";
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (!t) {
+      return;
+    }
+
+    if (t.id === "micRecordBtn" || (t.closest && t.closest("#micRecordBtn"))) {
+      setTimeout(startListening, 300);
+    }
+
+    if (t.id === "micStopBtn" || (t.closest && t.closest("#micStopBtn"))) {
+      stopListening();
+    }
+
+    if (t.id === "micCloseBtn" || (t.closest && t.closest("#micCloseBtn"))) {
+      stopListening();
+    }
+
+    if (t.id === "aurixMicModal") {
+      stopListening();
+    }
+  });
+})();
+
+
+/* ============================================
+   MIC FIX: BOTONES VISIBLES + AUTO-STOP +
+   GUARDIAN GLOBAL DE MICROFONO (SAFARI/iOS)
+============================================ */
+
+(function () {
+  if (window.aurixMicFixInjected) {
+    return;
+  }
+
+  window.aurixMicFixInjected = true;
+
+  /* ------------------------------------------
+     1) GUARDIAN GLOBAL DE STREAMS DE MICROFONO
+  ------------------------------------------ */
+
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && !window.__aurixStreamGuard) {
+    window.__aurixStreamGuard = true;
+    window.__aurixActiveStreams = [];
+
+    var originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+
+    navigator.mediaDevices.getUserMedia = function (constraints) {
+      return originalGetUserMedia(constraints).then(function (stream) {
+        window.__aurixActiveStreams.push(stream);
+
+        stream.getTracks().forEach(function (track) {
+          track.addEventListener("ended", function () {
+            var i = window.__aurixActiveStreams.indexOf(stream);
+            if (i > -1) {
+              window.__aurixActiveStreams.splice(i, 1);
+            }
+          });
+        });
+
+        return stream;
+      });
+    };
+  }
+
+  /* Rastrear tambien los reconocimientos de voz */
+  window.__aurixSRInstances = [];
+
+  ["SpeechRecognition", "webkitSpeechRecognition"].forEach(function (key) {
+    var Orig = window[key];
+
+    if (!Orig || Orig.__aurixWrapped) {
+      return;
+    }
+
+    function WrappedSR() {
+      var inst = new Orig();
+      window.__aurixSRInstances.push(inst);
+      return inst;
+    }
+
+    WrappedSR.prototype = Orig.prototype;
+    WrappedSR.__aurixWrapped = true;
+
+    window[key] = WrappedSR;
+  });
+
+  /* APAGAR TODO EL MICROFONO (streams + reconocimiento) */
+  window.aurixStopAllMics = function () {
+    (window.__aurixActiveStreams || []).slice().forEach(function (stream) {
+      stream.getTracks().forEach(function (track) {
+        try {
+          track.stop();
+        } catch (e) {
+          // Ignorar.
+        }
+      });
+    });
+
+    window.__aurixActiveStreams = [];
+
+    (window.__aurixSRInstances || []).slice().forEach(function (inst) {
+      try {
+        inst.onresult = null;
+        inst.onend = null;
+        inst.onerror = null;
+        inst.abort();
+      } catch (e) {
+        // Ignorar.
+      }
+    });
+
+    window.__aurixSRInstances = [];
+  };
+
+  /* Cerrar microfono al salir de la app / pestaña (iOS Safari) */
+  window.addEventListener("pagehide", function () {
+    window.aurixStopAllMics();
+  });
+
+  window.addEventListener("beforeunload", function () {
+    window.aurixStopAllMics();
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") {
+      window.aurixStopAllMics();
+    }
+  });
+
+  /* Cerrar microfono al APAGAR AURIX con el boton de poder */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (t && (t.id === "aurixPowerBtn" || (t.closest && t.closest("#aurixPowerBtn")))) {
+      window.aurixStopAllMics();
+    }
+  }, true);
+
+  /* ------------------------------------------
+     2) UI DE GRABACION VISIBLE + AUTO-STOP
+  ------------------------------------------ */
+
+  var SILENCE_MS = 3000;
+  var SOUND_THRESHOLD = 6;
+  var monitor = null;
+
+  function waitFor(selector, cb, tries) {
+    var el = document.querySelector(selector);
+
+    if (el) {
+      cb(el);
+      return;
+    }
+
+    if ((tries || 0) > 40) {
+      return;
+    }
+
+    setTimeout(function () {
+      waitFor(selector, cb, (tries || 0) + 1);
+    }, 500);
+  }
+
+  function setRecordingUI(on) {
+    var rec = document.getElementById("micRecordBtn");
+    var stop = document.getElementById("micStopBtn");
+    var close = document.getElementById("micCloseBtn");
+    var status = document.getElementById("micStatus");
+
+    [rec, stop, close].forEach(function (b) {
+      if (b) {
+        b.classList.toggle("recording", on);
+      }
+    });
+
+    if (status) {
+      status.classList.toggle("recording", on);
+    }
+  }
+
+  function stopSilenceMonitor() {
+    if (monitor) {
+      if (monitor.raf) {
+        cancelAnimationFrame(monitor.raf);
+      }
+
+      if (monitor.ctx) {
+        try {
+          monitor.ctx.close();
+        } catch (e) {
+          // Ignorar.
+        }
+      }
+
+      monitor = null;
+    }
+  }
+
+  function startSilenceMonitor() {
+    stopSilenceMonitor();
+
+    var streams = window.__aurixActiveStreams || [];
+    var stream = null;
+
+    for (var i = streams.length - 1; i >= 0; i--) {
+      if (streams[i].getAudioTracks && streams[i].getAudioTracks().length && streams[i].active) {
+        stream = streams[i];
+        break;
+      }
+    }
+
+    if (!stream) {
+      return;
+    }
+
+    var AC = window.AudioContext || window.webkitAudioContext;
+
+    if (!AC) {
+      return;
+    }
+
+    var ctx = new AC();
+    var src = ctx.createMediaStreamSource(stream);
+    var analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+
+    var data = new Uint8Array(analyser.fftSize);
+    var lastSound = Date.now();
+    var started = Date.now();
+
+    monitor = { ctx: ctx, raf: 0 };
+
+    function tick() {
+      if (!monitor) {
+        return;
+      }
+
+      analyser.getByteTimeDomainData(data);
+
+      var sum = 0;
+
+      for (var i = 0; i < data.length; i++) {
+        var d = (data[i] - 128) / 128;
+        sum += d * d;
+      }
+
+      var rms = Math.sqrt(sum / data.length) * 100;
+
+      if (rms > SOUND_THRESHOLD) {
+        lastSound = Date.now();
+      }
+
+      var silence = Date.now() - lastSound;
+      var total = Date.now() - started;
+
+      if (silence >= SILENCE_MS && total >= 1500) {
+        var status = document.getElementById("micStatus");
+        var stopBtn = document.getElementById("micStopBtn");
+
+        if (status) {
+          status.textContent = "Silencio detectado. Deteniendo automáticamente...";
+        }
+
+        stopSilenceMonitor();
+
+        if (stopBtn) {
+          stopBtn.click();
+        }
+
+        return;
+      }
+
+      monitor.raf = requestAnimationFrame(tick);
+    }
+
+    tick();
+  }
+
+  function watchRecordingState() {
+    var rec = document.getElementById("micRecordBtn");
+
+    if (!rec) {
+      return;
+    }
+
+    var last = null;
+
+    setInterval(function () {
+      var on = rec.disabled;
+
+      if (on === last) {
+        return;
+      }
+
+      last = on;
+
+      setRecordingUI(on);
+
+      if (on) {
+        setTimeout(startSilenceMonitor, 400);
+      } else {
+        stopSilenceMonitor();
+      }
+    }, 250);
+  }
+
+  waitFor("#micRecordBtn", function () {
+    watchRecordingState();
+  });
+})();
+
+/* ============================================
+   BOTON META ALCANZADA (SOLO >= 70%)
+============================================ */
+
+(function () {
+  if (window.__aurixGoalInjected) {
+    return;
+  }
+
+  window.__aurixGoalInjected = true;
+
+  var GOAL_MIN = 70;
+
+  function currentScore() {
+    var el = document.getElementById("micScoreValue");
+    return el ? (parseInt(el.textContent, 10) || 0) : 0;
+  }
+
+  function currentPhrase() {
+    var sel = document.getElementById("micPhraseSelect");
+    return sel ? sel.value : "";
+  }
+
+  function goalToast(text) {
+    var t = document.getElementById("goalToast");
+
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "goalToast";
+      t.className = "pr-record-toast";
+      document.body.appendChild(t);
+    }
+
+    t.textContent = text;
+    t.classList.add("show");
+
+    clearTimeout(t._t);
+
+    t._t = setTimeout(function () {
+      t.classList.remove("show");
+    }, 2600);
+  }
+
+  function injectGoalButton() {
+    var modal = document.getElementById("aurixMicModal");
+
+    if (!modal || document.getElementById("micGoalBtn")) {
+      return;
+    }
+
+    var actions = modal.querySelector(".ob-actions");
+
+    var btn = document.createElement("button");
+    btn.id = "micGoalBtn";
+    btn.type = "button";
+    btn.className = "mic-goal-btn";
+    btn.innerHTML = "🏆 META ALCANZADA";
+
+    if (actions) {
+      actions.insertBefore(btn, actions.firstChild);
+    } else {
+      modal.appendChild(btn);
+    }
+
+    btn.addEventListener("click", function () {
+      if (btn.classList.contains("locked")) {
+        return;
+      }
+
+      var score = currentScore();
+      var phrase = currentPhrase();
+
+      if (score < GOAL_MIN) {
+        return;
+      }
+
+      if (typeof appState !== "undefined") {
+        if (!appState.speakingRecords) {
+          appState.speakingRecords = {};
+        }
+
+        var r = appState.speakingRecords[phrase] || {
+          attempts: 0,
+          best: score,
+          last: score,
+          history: []
+        };
+
+        r.goal = true;
+        appState.speakingRecords[phrase] = r;
+
+        if (typeof saveAppState === "function") {
+          saveAppState();
+        }
+      }
+
+      btn.classList.add("locked");
+      btn.innerHTML = "✔ META REGISTRADA";
+
+      goalToast("🏆 Meta alcanzada: " + score + '% en "' + phrase + '"');
+    });
+  }
+
+  function refreshGoal() {
+    var btn = document.getElementById("micGoalBtn");
+
+    if (!btn) {
+      return;
+    }
+
+    var score = currentScore();
+
+    if (score >= GOAL_MIN) {
+      btn.classList.add("visible");
+    } else {
+      btn.classList.remove("visible");
+      btn.classList.remove("locked");
+      btn.innerHTML = "🏆 META ALCANZADA";
+    }
+  }
+
+  setInterval(function () {
+    injectGoalButton();
+    refreshGoal();
+  }, 400);
+})();
+
+/* ============================================
+   ADN REAL HELIX v2 (MOTOR)
+============================================ */
+
+function renderDna(container) {
+  window.__dna2Gen = (window.__dna2Gen || 0) + 1;
+  var gen = window.__dna2Gen;
+
+  container.innerHTML =
+    '<div class="dna2-wrap">' +
+      '<canvas id="dna2Stars"></canvas>' +
+      '<div class="dna2-core">' +
+        '<div class="dna2-ring-wrap">' +
+          '<canvas id="dna2Helix"></canvas>' +
+          '<svg class="dna2-ring" viewBox="0 0 200 200">' +
+            '<circle class="dna2-ring-bg" cx="100" cy="100" r="92"></circle>' +
+            '<circle class="dna2-ring-fg" id="dna2RingFg" cx="100" cy="100" r="92"></circle>' +
+          '</svg>' +
+          '<div class="dna2-percent" id="dna2Percent">0%</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dna2-status" id="dna2Status">ANALIZANDO TUS PREFERENCIAS</div>' +
+    '</div>';
+
+  var starsCanvas = document.getElementById("dna2Stars");
+  var helixCanvas = document.getElementById("dna2Helix");
+  var ringFg = document.getElementById("dna2RingFg");
+  var percentEl = document.getElementById("dna2Percent");
+  var statusEl = document.getElementById("dna2Status");
+
+  function fit() {
+    var wrap = container.querySelector(".dna2-wrap");
+
+    if (!wrap) {
+      return;
+    }
+
+    var r = wrap.getBoundingClientRect();
+    starsCanvas.width = r.width;
+    starsCanvas.height = r.height;
+
+    var hw = helixCanvas.parentElement.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+
+    helixCanvas.width = hw.width * dpr;
+    helixCanvas.height = hw.height * dpr;
+    helixCanvas.style.width = hw.width + "px";
+    helixCanvas.style.height = hw.height + "px";
+    helixCanvas.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  fit();
+  window.addEventListener("resize", fit);
+
+  var CIRC = 2 * Math.PI * 92;
+  ringFg.style.strokeDasharray = CIRC;
+  ringFg.style.strokeDashoffset = CIRC;
+
+  var stars = [];
+
+  for (var i = 0; i < 70; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random(),
+      s: Math.random() * 1.6 + 0.4,
+      tw: Math.random() * Math.PI * 2,
+      sp: 0.5 + Math.random()
+    });
+  }
+
+  var progress = 0;
+  var startTime = null;
+  var DURATION = 9000;
+
+  var STATUSES = [
+    { at: 0, text: "ANALIZANDO TUS PREFERENCIAS", say: "Analizando tus preferencias." },
+    { at: 34, text: "MAPEANDO TU ESTILO", say: "Mapeando tu estilo." },
+    { at: 67, text: "SINCRONIZANDO CON AURIX", say: "Sincronizando con AURIX." },
+    { at: 100, text: "ADN COMPLETADO", say: "Tu ADN está listo." }
+  ];
+
+  var statusIndex = 0;
+
+  function drawStars(t) {
+    var ctx = starsCanvas.getContext("2d");
+    var w = starsCanvas.width;
+    var h = starsCanvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    for (var i = 0; i < stars.length; i++) {
+      var st = stars[i];
+      var a = 0.25 + 0.55 * Math.abs(Math.sin(st.tw + t * 0.001 * st.sp));
+
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.arc(st.x * w, st.y * h, st.s, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHelix(t) {
+    var ctx = helixCanvas.getContext("2d");
+    var w = helixCanvas.clientWidth;
+    var h = helixCanvas.clientHeight;
+
+    ctx.clearRect(0, 0, w, h);
+
+    var cx = w / 2;
+    var top = h * 0.08;
+    var bottom = h * 0.92;
+    var radius = w * 0.22;
+    var turns = 2.2;
+    var N = 26;
+    var rot = t * 0.0012;
+
+    var i, p, ang, y, x1, x2;
+
+    for (i = 0; i <= N; i++) {
+      p = i / N;
+      ang = p * Math.PI * 2 * turns + rot;
+      y = top + (bottom - top) * p;
+      x1 = cx + Math.sin(ang) * radius;
+      x2 = cx + Math.sin(ang + Math.PI) * radius;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x1, y);
+      ctx.lineTo(x2, y);
+      ctx.stroke();
+    }
+
+    function dot(x, y, depth, color) {
+      var r = 2.2 + (depth + 1) * 1.6;
+      var a = 0.25 + (depth + 1) * 0.35;
+
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8 * (depth + 1);
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    var all = [];
+
+    for (var k = 0; k <= N; k++) {
+      var p2 = k / N;
+      var ang2 = p2 * Math.PI * 2 * turns + rot;
+      var y2 = top + (bottom - top) * p2;
+
+      all.push({ x: cx + Math.sin(ang2) * radius, y: y2, d: Math.cos(ang2), c: "#ffffff" });
+      all.push({ x: cx + Math.sin(ang2 + Math.PI) * radius, y: y2, d: Math.cos(ang2 + Math.PI), c: "#7fa8ff" });
+    }
+
+    all.sort(function (m, n) {
+      return m.d - n.d;
+    });
+
+    for (var m2 = 0; m2 < all.length; m2++) {
+      var q = all[m2];
+      dot(q.x, q.y, q.d, q.c);
+    }
+  }
+
+  function loop(t) {
+    if (window.__dna2Gen !== gen) {
+      return;
+    }
+
+    if (startTime === null) {
+      startTime = t;
+    }
+
+    var elapsed = t - startTime;
+    progress = Math.min(1, elapsed / DURATION);
+
+    drawStars(t);
+    drawHelix(t);
+
+    var pct = Math.round(progress * 100);
+
+    percentEl.textContent = pct + "%";
+    ringFg.style.strokeDashoffset = CIRC * (1 - progress);
+
+    while (statusIndex < STATUSES.length - 1 && pct >= STATUSES[statusIndex + 1].at) {
+      statusIndex++;
+      statusEl.textContent = STATUSES[statusIndex].text;
+
+      if (typeof ssSpeak === "function") {
+        ssSpeak(STATUSES[statusIndex].say, "narrator");
+      }
+    }
+
+    if (progress >= 1) {
+      setTimeout(function () {
+        if (window.__dna2Gen !== gen) {
+          return;
+        }
+
+        if (typeof renderOnboardingStep === "function") {
+          renderOnboardingStep("welcome");
+        }
+      }, 700);
+
+      return;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Construyendo tu ADN de aprendizaje.", "narrator");
+  }
+}
+
+/* ============================================
+   RESUME ROUTER: CONTINUAR DONDE TE QUEDASTE
+============================================ */
+
+function aurixNextStepInfo() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+  var sess = s.sessions || {};
+
+  if (!s.onboardingCompleted && !s.mission1Completed) {
+    return "Tu siguiente paso: completar tu ADN de aprendizaje.";
+  }
+
+  if (!s.mission1Completed) {
+    return "Tu siguiente paso: Sesión 1, Primera conversación.";
+  }
+
+  if (!sess.session2Completed) {
+    return "Tu siguiente paso: Sesión 2, Nivel Cero, Singular y Plural.";
+  }
+
+  if (!sess.session3Completed) {
+    return "Tu siguiente paso: Sesión 3, El Filtro Maestro R.O.D.";
+  }
+
+  if (!sess.session4Completed) {
+    return "Tu siguiente paso: Sesión 4, Presente Simple vs Continuo.";
+  }
+
+  return "Curso al día. Puedes repasar cualquier sesión o practicar speaking.";
+}
+
+/* Continuar ya NO reinicia el onboarding: te lleva a tu punto actual */
+function enterOnboarding() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  if (s.mission1Completed || s.onboardingCompleted) {
+    if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
+      renderSessionsPanel(ensureOnboardingScreen());
+      return;
+    }
+  }
+
+  renderOnboardingStep("nickname");
+}
+
+/* Voz en cola: habla DESPUÉS del saludo de encendido, sin cancelarlo */
+function aurixSpeakQueued(text) {
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
+  if (window.AurixTTS && window.AurixTTS.settings && !window.AurixTTS.settings.enabled) {
+    return;
+  }
+
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = "es-MX";
+  u.rate = 1;
+  u.pitch = 0.95;
+  speechSynthesis.speak(u);
+}
+
+(function () {
+  if (window.__aurixResumeInjected) {
+    return;
+  }
+
+  window.__aurixResumeInjected = true;
+
+  function watchOverlay() {
+    var overlay = document.getElementById("aurixOffOverlay");
+
+    if (!overlay) {
+      setTimeout(watchOverlay, 800);
+      return;
+    }
+
+    var wasHidden = overlay.classList.contains("hidden");
+
+    var obs = new MutationObserver(function () {
+      var isHidden = overlay.classList.contains("hidden");
+
+      /* El overlay se ocultó = AURIX se encendió */
+      if (!wasHidden && isHidden) {
+        setTimeout(function () {
+          aurixSpeakQueued(aurixNextStepInfo());
+        }, 400);
+      }
+
+      wasHidden = isHidden;
+    });
+
+    obs.observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  watchOverlay();
+})();

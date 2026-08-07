@@ -12,7 +12,7 @@ class AurixTTS {
     this.storageKey = "aurix_tts_v1";
     this.settings = {
       enabled: true,
-      subtitles: true,
+      subtitles: false,
       narratorVoice: "",
       aurixVoice: ""
     };

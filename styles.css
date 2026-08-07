@@ -2526,3 +2526,937 @@ body.aurix-speaking .aurix-orb {
     height: 72vmin;
   }
 }
+
+/* ============================================
+   MINI ORBE AVATAR + SYNC MICROFONO
+============================================ */
+
+.aurix-mini-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mini-orb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #06263f, #0a4d7a, #0e6fb0, #063a5e,
+    #0a5c94, #04202f, #0d7cc4, #07476f, #06263f
+  );
+  box-shadow: 0 0 14px rgba(20, 140, 255, 0.35);
+  animation: miniSpin 12s linear infinite;
+  flex-shrink: 0;
+}
+
+.mini-name {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+}
+
+.mini-status {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.25);
+  text-transform: uppercase;
+}
+
+@keyframes miniSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* AURIX hablando (azul, rápido) */
+body.aurix-speaking .mini-orb {
+  animation: miniSpin 3s linear infinite;
+  box-shadow: 0 0 22px rgba(30, 160, 255, 0.6);
+}
+
+/* AURIX escuchándote A TI (verde, vivo) */
+body.aurix-listening .mini-orb {
+  animation: miniSpin 2s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    #063f2a, #0a7a4d, #0eb06f, #065e3a,
+    #0a945c, #042f20, #0dcc84, #076f47, #063f2a
+  );
+  box-shadow: 0 0 22px rgba(120, 255, 190, 0.55);
+}
+
+body.aurix-listening .aurix-orb {
+  box-shadow:
+    0 0 90px rgba(60, 255, 170, 0.35),
+    0 0 200px rgba(60, 255, 170, 0.15),
+    inset 0 0 90px rgba(0, 50, 30, 0.55);
+}
+
+body.aurix-listening .mini-status {
+  color: rgba(120, 255, 190, 0.6);
+}
+
+/* ============================================
+   MIC: ESTADOS DE GRABACION VISIBLES
+============================================ */
+
+#micStopBtn.recording {
+  background: linear-gradient(135deg, #ff5f6d, #c92643) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 95, 109, 0.45) !important;
+  box-shadow: 0 0 22px rgba(255, 70, 90, 0.35);
+  animation: micRecPulse 1.2s ease-in-out infinite;
+  opacity: 1 !important;
+}
+
+#micRecordBtn.recording {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+#micCloseBtn.recording {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+@keyframes micRecPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 70, 90, 0.25); }
+  50% { box-shadow: 0 0 30px rgba(255, 70, 90, 0.6); }
+}
+
+#micStatus.recording {
+  color: rgba(255, 120, 130, 0.9);
+}
+
+#micStatus.recording::before {
+  content: "● ";
+  color: #ff4d5e;
+  animation: micBlink 1s steps(2) infinite;
+}
+
+@keyframes micBlink {
+  50% { opacity: 0.2; }
+}
+
+/* ============================================
+   BOTON META ALCANZADA (SOLO >= 70%)
+============================================ */
+
+.mic-goal-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #04240f;
+  background: linear-gradient(135deg, #7dffb0, #2ecc71 55%, #1fa85a);
+  box-shadow: 0 0 24px rgba(46, 204, 113, 0.35);
+  animation: goalPulse 1.4s ease-in-out infinite;
+}
+
+.mic-goal-btn.visible {
+  display: inline-flex;
+}
+
+.mic-goal-btn.locked {
+  animation: none;
+  background: linear-gradient(135deg, #2ecc71, #1fa85a);
+  color: #eafff2;
+  box-shadow: none;
+  cursor: default;
+}
+
+@keyframes goalPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@media (max-width: 720px) {
+  .mic-goal-btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+}
+
+/* ============================================
+   ADN REAL HELIX v2
+============================================ */
+
+.dna2-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  padding: 30px 16px;
+  overflow: hidden;
+}
+
+#dna2Stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.dna2-core {
+  position: relative;
+  z-index: 1;
+}
+
+.dna2-ring-wrap {
+  position: relative;
+  width: min(320px, 78vw);
+  height: min(320px, 78vw);
+}
+
+#dna2Helix {
+  position: absolute;
+  inset: 8%;
+  width: 84%;
+  height: 84%;
+}
+
+.dna2-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.dna2-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1.5;
+}
+
+.dna2-ring-fg {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.35));
+  transition: stroke-dashoffset 0.2s linear;
+}
+
+.dna2-percent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 300;
+  letter-spacing: 1px;
+  color: #ffffff;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
+}
+
+.dna2-status {
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .dna2-percent {
+    font-size: 24px;
+  }
+
+  .dna2-status {
+    font-size: 9px;
+    letter-spacing: 0.28em;
+  }
+}
+
+/* ============================================
+   COMPACT PATCH: TODO CABE EN PANTALLA
+============================================ */
+
+/* 1) Botones generales más pequeños */
+.btn {
+  padding: 10px 18px;
+  font-size: 12px;
+}
+
+.ob-small-btn {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.phrase-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.collapse-toggle {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.ob-chip {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.response-chip {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.rod-option-btn {
+  padding: 10px 8px;
+  font-size: 15px;
+}
+
+.mic-goal-btn {
+  padding: 9px 14px;
+  font-size: 11px;
+}
+
+/* 2) Botón "Escuchar" de las tarjetas de frase */
+.mi-listen {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+/* 3) Tarjetas de frase más compactas */
+.mp-phrase {
+  padding: 10px 12px;
+}
+
+.mp-phrase .en-quote {
+  font-size: 15px;
+}
+
+.phrase-tools {
+  gap: 4px;
+  margin-left: 6px;
+}
+
+/* 4) Títulos y textos */
+.ob-title {
+  font-size: 18px;
+}
+
+.ob-sub {
+  font-size: 12px;
+}
+
+/* 5) Controles flotantes compactos */
+.aurix-progress-fab {
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.aurix-settings-toggle {
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.aurix-mic-fab {
+  bottom: 12px;
+  padding: 7px 12px;
+  gap: 6px;
+}
+
+.mic-fab-label {
+  font-size: 9px;
+}
+
+.aurix-power-btn {
+  bottom: 12px;
+  right: 12px;
+  padding: 7px 10px;
+}
+
+.aurix-power-text {
+  font-size: 10px;
+}
+
+.aurix-repeat {
+  bottom: 12px;
+  left: 12px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+/* 6) Espacio libre: nada tapado arriba ni cortado abajo */
+.screen {
+  padding-top: 60px !important;
+  padding-bottom: 118px !important;
+}
+
+/* 7) Móvil 9:16 aún más compacto */
+@media (max-width: 720px) {
+  .btn {
+    padding: 9px 16px;
+    font-size: 11px;
+  }
+
+  .ob-small-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .ob-chip {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .screen {
+    padding-top: 54px !important;
+    padding-bottom: 108px !important;
+  }
+
+  .mic-fab-label {
+    display: none;
+  }
+
+  .aurix-power-text {
+    display: none;
+  }
+
+  .aurix-mic-fab {
+    padding: 8px 10px;
+  }
+
+  .aurix-power-btn {
+    padding: 8px 10px;
+  }
+
+  .aurix-repeat {
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .ob-title {
+    font-size: 17px;
+  }
+
+  .mp-phrase .en-quote {
+    font-size: 14px;
+  }
+}
+
+/* ============================================
+   COMPACT PATCH: TODO CABE EN PANTALLA
+============================================ */
+
+/* 1) Botones generales más pequeños */
+.btn {
+  padding: 10px 18px;
+  font-size: 12px;
+}
+
+.ob-small-btn {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.phrase-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.collapse-toggle {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.ob-chip {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.response-chip {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.rod-option-btn {
+  padding: 10px 8px;
+  font-size: 15px;
+}
+
+.mic-goal-btn {
+  padding: 9px 14px;
+  font-size: 11px;
+}
+
+/* 2) Botón "Escuchar" de las tarjetas de frase */
+.mi-listen {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+/* 3) Tarjetas de frase más compactas */
+.mp-phrase {
+  padding: 10px 12px;
+}
+
+.mp-phrase .en-quote {
+  font-size: 15px;
+}
+
+.phrase-tools {
+  gap: 4px;
+  margin-left: 6px;
+}
+
+/* 4) Títulos y textos */
+.ob-title {
+  font-size: 18px;
+}
+
+.ob-sub {
+  font-size: 12px;
+}
+
+/* 5) Controles flotantes compactos */
+.aurix-progress-fab {
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.aurix-settings-toggle {
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.aurix-mic-fab {
+  bottom: 12px;
+  padding: 7px 12px;
+  gap: 6px;
+}
+
+.mic-fab-label {
+  font-size: 9px;
+}
+
+.aurix-power-btn {
+  bottom: 12px;
+  right: 12px;
+  padding: 7px 10px;
+}
+
+.aurix-power-text {
+  font-size: 10px;
+}
+
+.aurix-repeat {
+  bottom: 12px;
+  left: 12px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+/* 6) Espacio libre: nada tapado arriba ni cortado abajo */
+.screen {
+  padding-top: 60px !important;
+  padding-bottom: 118px !important;
+}
+
+/* 7) Móvil 9:16 aún más compacto */
+@media (max-width: 720px) {
+  .btn {
+    padding: 9px 16px;
+    font-size: 11px;
+  }
+
+  .ob-small-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .ob-chip {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .screen {
+    padding-top: 54px !important;
+    padding-bottom: 108px !important;
+  }
+
+  .mic-fab-label {
+    display: none;
+  }
+
+  .aurix-power-text {
+    display: none;
+  }
+
+  .aurix-mic-fab {
+    padding: 8px 10px;
+  }
+
+  .aurix-power-btn {
+    padding: 8px 10px;
+  }
+
+  .aurix-repeat {
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .ob-title {
+    font-size: 17px;
+  }
+
+  .mp-phrase .en-quote {
+    font-size: 14px;
+  }
+}
+
+/* ============================================
+   COMPACT PATCH: TODO CABE EN PANTALLA
+============================================ */
+
+/* 1) Botones generales más pequeños */
+.btn {
+  padding: 10px 18px;
+  font-size: 12px;
+}
+
+.ob-small-btn {
+  padding: 7px 12px;
+  font-size: 11px;
+}
+
+.phrase-btn {
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.collapse-toggle {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.ob-chip {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.response-chip {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.rod-option-btn {
+  padding: 10px 8px;
+  font-size: 15px;
+}
+
+.mic-goal-btn {
+  padding: 9px 14px;
+  font-size: 11px;
+}
+
+/* 2) Botón "Escuchar" de las tarjetas de frase */
+.mi-listen {
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+/* 3) Tarjetas de frase más compactas */
+.mp-phrase {
+  padding: 10px 12px;
+}
+
+.mp-phrase .en-quote {
+  font-size: 15px;
+}
+
+.phrase-tools {
+  gap: 4px;
+  margin-left: 6px;
+}
+
+/* 4) Títulos y textos */
+.ob-title {
+  font-size: 18px;
+}
+
+.ob-sub {
+  font-size: 12px;
+}
+
+/* 5) Controles flotantes compactos */
+.aurix-progress-fab {
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.aurix-settings-toggle {
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.aurix-mic-fab {
+  bottom: 12px;
+  padding: 7px 12px;
+  gap: 6px;
+}
+
+.mic-fab-label {
+  font-size: 9px;
+}
+
+.aurix-power-btn {
+  bottom: 12px;
+  right: 12px;
+  padding: 7px 10px;
+}
+
+.aurix-power-text {
+  font-size: 10px;
+}
+
+.aurix-repeat {
+  bottom: 12px;
+  left: 12px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+/* 6) Espacio libre: nada tapado arriba ni cortado abajo */
+.screen {
+  padding-top: 60px !important;
+  padding-bottom: 118px !important;
+}
+
+/* 7) Móvil 9:16 aún más compacto */
+@media (max-width: 720px) {
+  .btn {
+    padding: 9px 16px;
+    font-size: 11px;
+  }
+
+  .ob-small-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .ob-chip {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .screen {
+    padding-top: 54px !important;
+    padding-bottom: 108px !important;
+  }
+
+  .mic-fab-label {
+    display: none;
+  }
+
+  .aurix-power-text {
+    display: none;
+  }
+
+  .aurix-mic-fab {
+    padding: 8px 10px;
+  }
+
+  .aurix-power-btn {
+    padding: 8px 10px;
+  }
+
+  .aurix-repeat {
+    font-size: 10px;
+    padding: 0 8px;
+  }
+
+  .ob-title {
+    font-size: 17px;
+  }
+
+  .mp-phrase .en-quote {
+    font-size: 14px;
+  }
+}
+
+/* ============================================
+   GLOBAL MINI UI PATCH
+   Botones pequeños en TODA la app (actuales y futuras)
+============================================ */
+
+/* 1) TODOS los botones compactos (excepto el punto pulsante) */
+button:not(.pulse-dot):not(#startDot) {
+  padding: 8px 14px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  min-height: 0 !important;
+  border-radius: 999px !important;
+}
+
+/* 2) Botones de acción principales un poco más presentes */
+.btn,
+#micRecordBtn,
+#micStopBtn,
+#micCloseBtn {
+  padding: 10px 18px !important;
+  font-size: 12px !important;
+}
+
+/* 3) Botones secundarios y de frase mínimos */
+.ob-small-btn,
+.phrase-btn,
+.mi-listen,
+.collapse-toggle,
+.btn-continue-convo,
+.btn-introduce,
+.btn-send-custom,
+.btn-send-response {
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+}
+
+.mi-listen {
+  width: 100% !important;
+}
+
+/* 4) Chips compactos */
+.ob-chip,
+.response-chip {
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}
+
+.rod-option-btn {
+  padding: 10px 8px !important;
+  font-size: 14px !important;
+}
+
+/* 5) Barra flotante inferior mínima y sin chocar */
+.aurix-mic-fab,
+.aurix-power-btn,
+.aurix-repeat {
+  height: 38px !important;
+  min-width: 38px !important;
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+  gap: 6px !important;
+}
+
+.aurix-mic-fab .mic-fab-label,
+.aurix-power-btn .aurix-power-text {
+  display: none !important;
+}
+
+/* 6) Controles flotantes superiores mínimos */
+.aurix-progress-fab {
+  padding: 6px 9px !important;
+  font-size: 11px !important;
+  top: 10px !important;
+  left: 10px !important;
+}
+
+.aurix-progress-fab .pr-fab-label {
+  display: none !important;
+}
+
+.aurix-settings-toggle {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 13px !important;
+  top: 10px !important;
+  right: 10px !important;
+}
+
+/* 7) Espacio reservado: nada tapado arriba ni cortado abajo */
+.screen {
+  padding-top: 52px !important;
+  padding-bottom: 92px !important;
+}
+
+/* 8) Tarjetas y textos compactos */
+.ob-card,
+.card {
+  padding: 16px 14px !important;
+}
+
+.ob-title {
+  font-size: 17px !important;
+}
+
+.ob-sub {
+  font-size: 12px !important;
+}
+
+.mp-phrase {
+  padding: 10px 12px !important;
+}
+
+.mp-phrase .en-quote {
+  font-size: 14px !important;
+}
+
+.ob-actions {
+  gap: 8px !important;
+  margin-top: 12px !important;
+}
+
+/* 9) Botón de meta compacto pero visible */
+.mic-goal-btn {
+  padding: 9px 14px !important;
+  font-size: 11px !important;
+}
+
+/* 10) Móvil 9:16 aún más ajustado */
+@media (max-width: 720px) {
+  .screen {
+    padding-top: 48px !important;
+    padding-bottom: 88px !important;
+  }
+
+  .ob-card,
+  .card {
+    padding: 14px 12px !important;
+  }
+}
