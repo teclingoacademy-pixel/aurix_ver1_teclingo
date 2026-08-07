@@ -2526,9 +2526,17 @@ function renderMissionDashboard(container) {
     var stopBtn = document.getElementById("micStopBtn");
     var transcript = document.getElementById("micTranscript");
 
-    try {
-      setMicStatus("Solicitando micrófono...");
+    micRecording = true;
 
+    if (recordBtn) recordBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = false;
+    if (transcript) transcript.textContent = "Escuchando...";
+
+    startRecognition();
+
+    setMicStatus("Escuchando... habla en inglés.");
+
+    try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
       var AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -2541,16 +2549,6 @@ function renderMissionDashboard(container) {
         source.connect(analyser);
         animateBars();
       }
-
-      if (recordBtn) recordBtn.disabled = true;
-      if (stopBtn) stopBtn.disabled = false;
-      if (transcript) transcript.textContent = "Escuchando...";
-
-      micRecording = true;
-
-      startRecognition();
-
-      setMicStatus("Escuchando... habla en inglés.");
     } catch (error) {
       setMicStatus("No se pudo acceder al micrófono. Revisa los permisos del navegador.");
     }
@@ -2575,9 +2573,11 @@ function renderMissionDashboard(container) {
 
       recognition = new SpeechRecognitionClass();
 
+      var isAndroid = /Android/i.test(navigator.userAgent || "");
+
       recognition.lang = "en-US";
-      recognition.interimResults = true;
-      recognition.continuous = true;
+      recognition.interimResults = !isAndroid;
+      recognition.continuous = !isAndroid;
       recognition.maxAlternatives = 1;
 
       recognition.onresult = function (event) {
