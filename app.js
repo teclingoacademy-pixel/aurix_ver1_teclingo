@@ -3550,3 +3550,268 @@ function renderSession2Complete(container, score) {
     init();
   }
 })();
+
+/* ============================================
+   SPEAKING RECORDS + PROGRESS PANEL
+============================================ */
+
+(function () {
+  if (window.aurixRecordsInjected) {
+    return;
+  }
+
+  window.aurixRecordsInjected = true;
+
+  function getRecords() {
+    if (typeof appState === "undefined") {
+      return {};
+    }
+
+    if (!appState.speakingRecords) {
+      appState.speakingRecords = {};
+    }
+
+    return appState.speakingRecords;
+  }
+
+  function saveRecords() {
+    if (typeof saveAppState === "function") {
+      saveAppState();
+    }
+  }
+
+  function statusOf(best) {
+    if (best >= 85) {
+      return { label: "Dominada", cls: "mastered" };
+    }
+
+    if (best >= 60) {
+      return { label: "En progreso", cls: "progress" };
+    }
+
+    if (best > 0) {
+      return { label: "Iniciada", cls: "started" };
+    }
+
+    return { label: "Sin practicar", cls: "none" };
+  }
+
+  function showRecordToast(phrase, score) {
+    var toast = document.getElementById("prRecordToast");
+
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "prRecordToast";
+      toast.className = "pr-record-toast";
+      document.body.appendChild(toast);
+    }
+
+    toast.textContent = '🏆 Nuevo récord: ' + score + '% en "' + phrase + '"';
+    toast.classList.add("show");
+
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () {
+      toast.classList.remove("show");
+    }, 2600);
+  }
+
+  window.aurixUpdateRecord = function (phrase, score) {
+    var records = getRecords();
+    var r = records[phrase] || { attempts: 0, best: 0, last: 0, history: [] };
+
+    r.attempts += 1;
+    r.last = score;
+
+    var isRecord = score > r.best;
+
+    if (isRecord) {
+      r.best = score;
+    }
+
+    r.history.push(score);
+
+    if (r.history.length > 10) {
+      r.history.shift();
+    }
+
+    records[phrase] = r;
+    saveRecords();
+
+    if (isRecord) {
+      showRecordToast(phrase, score);
+    }
+
+    renderProgressPanel();
+
+    return isRecord;
+  };
+
+  function injectProgressUI() {
+    if (document.getElementById("aurixProgressFab")) {
+      return;
+    }
+
+    var fab = document.createElement("button");
+    fab.id = "aurixProgressFab";
+    fab.type = "button";
+    fab.className = "aurix-progress-fab";
+    fab.innerHTML =
+      "<span>📊</span>" +
+      '<span class="pr-fab-label">Progreso</span>';
+    document.body.appendChild(fab);
+
+    var modal = document.createElement("div");
+    modal.id = "aurixProgressModal";
+    modal.className = "mic-modal hidden";
+    modal.innerHTML =
+      '<div class="mic-card">' +
+        '<div class="badge">AURIX VOICE</div>' +
+        '<h2 class="ob-title">Tu progreso de speaking</h2>' +
+        '<p class="ob-sub">Resultados, intentos y récords por frase.</p>' +
+        '<div class="pr-summary" id="prSummary"></div>' +
+        '<div class="pr-list" id="prList"></div>' +
+        '<div class="ob-actions">' +
+          '<button id="prClose" class="btn">Cerrar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    fab.addEventListener("click", function () {
+      renderProgressPanel();
+      modal.classList.remove("hidden");
+    });
+
+    document.getElementById("prClose").addEventListener("click", function () {
+      modal.classList.add("hidden");
+    });
+
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) {
+        modal.classList.add("hidden");
+      }
+    });
+  }
+
+  function renderProgressPanel() {
+    var list = document.getElementById("prList");
+    var summary = document.getElementById("prSummary");
+
+    if (!list || !summary) {
+      return;
+    }
+
+    var records = getRecords();
+    var keys = Object.keys(records);
+
+    var totalAttempts = 0;
+    var bestSum = 0;
+    var mastered = 0;
+
+    keys.forEach(function (k) {
+      totalAttempts += records[k].attempts;
+      bestSum += records[k].best;
+
+      if (records[k].best >= 85) {
+        mastered++;
+      }
+    });
+
+    var avg = keys.length ? Math.round(bestSum / keys.length) : 0;
+
+    summary.innerHTML =
+      '<div class="pr-summary-item">' +
+        '<div class="pr-summary-value">' + totalAttempts + '</div>' +
+        '<div class="pr-summary-label">Intentos</div>' +
+      '</div>' +
+      '<div class="pr-summary-item">' +
+        '<div class="pr-summary-value">' + avg + '%</div>' +
+        '<div class="pr-summary-label">Promedio récord</div>' +
+      '</div>' +
+      '<div class="pr-summary-item">' +
+        '<div class="pr-summary-value">' + mastered + '/' + keys.length + '</div>' +
+        '<div class="pr-summary-label">Dominadas</div>' +
+      '</div>';
+
+    if (!keys.length) {
+      list.innerHTML =
+        '<div class="pr-empty">Aún no hay prácticas registradas.<br>Usa el botón 🎤 en cualquier frase para grabar tu primer intento.</div>';
+      return;
+    }
+
+    keys.sort(function (a, b) {
+      return records[b].best - records[a].best;
+    });
+
+    list.innerHTML = keys.map(function (k) {
+      var r = records[k];
+      var st = statusOf(r.best);
+      var gap = 100 - r.best;
+      var tip = "";
+
+      if (r.best >= 100) {
+        tip = "¡Perfecto! Mantén el ritmo para conservar tu récord.";
+      } else if (r.best >= 85) {
+        tip = "¡Muy bien! Solo te falta " + gap + "% para la pronunciación perfecta.";
+      } else if (r.best > 0) {
+        tip = "Buen avance. Aún tienes " + gap + "% por mejorar: intenta hablar más despacio y con más claridad.";
+      }
+
+      return (
+        '<div class="pr-row">' +
+          '<div class="pr-top">' +
+            '<span class="pr-phrase">"' + k + '"</span>' +
+            '<span class="pr-status ' + st.cls + '">' + st.label + '</span>' +
+          '</div>' +
+          '<div class="pr-bar"><div class="pr-fill" style="width:' + r.best + '%"></div></div>' +
+          '<div class="pr-stats">' +
+            '<span>Intentos: ' + r.attempts + '</span>' +
+            '<span class="pr-best">🏆 Récord: ' + r.best + '%</span>' +
+            '<span>Último: ' + r.last + '%</span>' +
+          '</div>' +
+          (tip ? '<div class="pr-tip">' + tip + '</div>' : "") +
+        '</div>'
+      );
+    }).join("");
+  }
+
+  window.renderProgressPanel = renderProgressPanel;
+
+  window.aurixOpenProgress = function () {
+    injectProgressUI();
+    renderProgressPanel();
+    document.getElementById("aurixProgressModal").classList.remove("hidden");
+  };
+
+  // Registra el resultado cuando el usuario presiona "Detener" en el micrófono
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (t && (t.id === "micStopBtn" || (t.closest && t.closest("#micStopBtn")))) {
+      setTimeout(function () {
+        var valueEl = document.getElementById("micScoreValue");
+        var targetEl = document.getElementById("micTarget");
+
+        if (valueEl && targetEl) {
+          var score = parseInt(valueEl.textContent, 10) || 0;
+          var phrase = targetEl.dataset ? targetEl.dataset.text : "";
+
+          if (!phrase) {
+            phrase = targetEl.textContent || "";
+          }
+
+          phrase = String(phrase).replace(/^"|"$/g, "").trim();
+
+          if (phrase) {
+            window.aurixUpdateRecord(phrase, score);
+          }
+        }
+      }, 700);
+    }
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectProgressUI);
+  } else {
+    injectProgressUI();
+  }
+})();
