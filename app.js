@@ -4825,3 +4825,218 @@ function aurixSpeakQueued(text) {
 
   watchOverlay();
 })();
+
+/* ============================================
+   RESUME ROUTER: CONTINUAR DONDE TE QUEDASTE
+============================================ */
+
+function aurixNextStepInfo() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+  var sess = s.sessions || {};
+
+  if (!s.onboardingCompleted && !s.mission1Completed) {
+    return "Tu siguiente paso: completar tu ADN de aprendizaje.";
+  }
+
+  if (!s.mission1Completed) {
+    return "Tu siguiente paso: Sesión 1, Primera conversación.";
+  }
+
+  if (!sess.session2Completed) {
+    return "Tu siguiente paso: Sesión 2, Nivel Cero, Singular y Plural.";
+  }
+
+  if (!sess.session3Completed) {
+    return "Tu siguiente paso: Sesión 3, El Filtro Maestro R.O.D.";
+  }
+
+  if (!sess.session4Completed) {
+    return "Tu siguiente paso: Sesión 4, Presente Simple vs Continuo.";
+  }
+
+  return "Curso al día. Puedes repasar cualquier sesión o practicar speaking.";
+}
+
+/* Continuar ya NO reinicia el onboarding: te lleva a tu punto actual */
+function enterOnboarding() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  if (s.mission1Completed || s.onboardingCompleted) {
+    if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
+      renderSessionsPanel(ensureOnboardingScreen());
+      return;
+    }
+  }
+
+  renderOnboardingStep("nickname");
+}
+
+/* Voz en cola: habla DESPUÉS del saludo de encendido, sin cancelarlo */
+function aurixSpeakQueued(text) {
+  if (!("speechSynthesis" in window)) {
+    return;
+  }
+
+  if (window.AurixTTS && window.AurixTTS.settings && !window.AurixTTS.settings.enabled) {
+    return;
+  }
+
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = "es-MX";
+  u.rate = 1;
+  u.pitch = 0.95;
+  speechSynthesis.speak(u);
+}
+
+(function () {
+  if (window.__aurixResumeInjected) {
+    return;
+  }
+
+  window.__aurixResumeInjected = true;
+
+  function watchOverlay() {
+    var overlay = document.getElementById("aurixOffOverlay");
+
+    if (!overlay) {
+      setTimeout(watchOverlay, 800);
+      return;
+    }
+
+    var wasHidden = overlay.classList.contains("hidden");
+
+    var obs = new MutationObserver(function () {
+      var isHidden = overlay.classList.contains("hidden");
+
+      /* El overlay se ocultó = AURIX se encendió */
+      if (!wasHidden && isHidden) {
+        setTimeout(function () {
+          aurixSpeakQueued(aurixNextStepInfo());
+        }, 400);
+      }
+
+      wasHidden = isHidden;
+    });
+
+    obs.observe(overlay, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  watchOverlay();
+})();
+
+/* ============================================
+   ANDROID MIC FIX + DIAGNOSTICO VISIBLE
+============================================ */
+
+(function () {
+  if (window.__aurixAndroidFix) {
+    return;
+  }
+
+  window.__aurixAndroidFix = true;
+
+  /* 1) AudioContext: auto-resume + reintentos (Android los suspende) */
+  var OrigAC = window.AudioContext || window.webkitAudioContext;
+
+  if (OrigAC && !OrigAC.__aurixWrapped) {
+    window.__aurixContexts = [];
+
+    var WrappedAC = function () {
+      var c = new OrigAC();
+
+      window.__aurixContexts.push(c);
+
+      try {
+        c.resume();
+      } catch (e) {
+        // Ignorar.
+      }
+
+      var tries = 0;
+
+      var t = setInterval(function () {
+        tries++;
+
+        if (c.state === "running" || tries > 6) {
+          clearInterval(t);
+          return;
+        }
+
+        try {
+          c.resume();
+        } catch (e) {
+          // Ignorar.
+        }
+      }, 500);
+
+      return c;
+    };
+
+    WrappedAC.prototype = OrigAC.prototype;
+    WrappedAC.__aurixWrapped = true;
+
+    window.AudioContext = WrappedAC;
+    window.webkitAudioContext = WrappedAC;
+  }
+
+  /* 2) Reanudar contextos en el clic de Grabar (gesto real) */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (t && (t.id === "micRecordBtn" || (t.closest && t.closest("#micRecordBtn")))) {
+      (window.__aurixContexts || []).forEach(function (c) {
+        try {
+          c.resume();
+        } catch (e2) {
+          // Ignorar.
+        }
+      });
+    }
+  }, true);
+
+  /* 3) Diagnóstico visible del reconocimiento de voz */
+  var OrigSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (OrigSR && !OrigSR.__aurixDiag) {
+    var WrappedSR = function () {
+      var inst = new OrigSR();
+
+      try {
+        inst.addEventListener("error", function (ev) {
+          var st = document.getElementById("micStatus");
+
+          if (st) {
+            st.textContent = "Diagnóstico: error de reconocimiento = " + (ev.error || "desconocido");
+          }
+        });
+
+        inst.addEventListener("start", function () {
+          var st = document.getElementById("micStatus");
+
+          if (st) {
+            st.textContent = "Reconocimiento activo. Habla en inglés...";
+          }
+        });
+
+        inst.addEventListener("result", function () {
+          var st = document.getElementById("micStatus");
+
+          if (st) {
+            st.textContent = "Voz detectada. Procesando...";
+          }
+        });
+      } catch (e) {
+        // Ignorar.
+      }
+
+      return inst;
+    };
+
+    WrappedSR.prototype = OrigSR.prototype;
+    WrappedSR.__aurixDiag = true;
+
+    window.SpeechRecognition = WrappedSR;
+    window.webkitSpeechRecognition = WrappedSR;
+  }
+})();
+
