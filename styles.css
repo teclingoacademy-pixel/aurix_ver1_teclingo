@@ -2056,3 +2056,89 @@ body {
     padding: 7px 10px;
   }
 }
+
+/* ============================================
+   FIX: PUNTO "INICIA LA SECUENCIA" DISTORSIONADO
+============================================ */
+
+#splash3 {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 26px !important;
+}
+
+#splash3 > * {
+  margin: 0 !important;
+  width: auto !important;
+  max-width: 90% !important;
+}
+
+#splash3 .pulse-dot {
+  width: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+#splash3 .splash-action {
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  #splash3 .pulse-dot {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+  }
+
+  #splash3 {
+    gap: 22px !important;
+  }
+}
+
+/* ============================================
+   FIX: PUNTO "INICIA LA SECUENCIA" DISTORSIONADO
+============================================ */
+
+#splash3 {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 26px !important;
+}
+
+#splash3 > * {
+  margin: 0 !important;
+  width: auto !important;
+  max-width: 90% !important;
+}
+
+#splash3 .pulse-dot {
+  width: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+#splash3 .splash-action {
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  #splash3 .pulse-dot {
+    width: 16px !important;
+    min-width: 16px !important;
+    max-width: 16px !important;
+    height: 16px !important;
+  }
+
+  #splash3 {
+    gap: 22px !important;
+  }
+}
