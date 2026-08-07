@@ -1,0 +1,13 @@
+# Node
+node_modules/
+
+# Backups locales
+backups/
+
+# Logs y artefactos locales
+build-log.txt
+repomix-output.xml
+
+# Sistema
+Thumbs.db
+.DS_Store

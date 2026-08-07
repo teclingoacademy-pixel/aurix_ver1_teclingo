@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AURIX OS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234a9eff'/%3E%3Ccircle cx='32' cy='32' r='16' fill='none' stroke='%23ffffff' stroke-width='5'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- SPLASH 1 -->
+  <div id="splash1" class="screen active">
+    <p class="splash-text">¿Y si aprender inglés fuera más fácil?</p>
+  </div>
+
+  <!-- SPLASH 2 -->
+  <div id="splash2" class="screen">
+    <p class="splash-text">¿Y si el curso se adaptara a ti...</p>
+    <p class="splash-text sub">y no tú a él?</p>
+  </div>
+
+  <!-- SPLASH 3 -->
+  <div id="splash3" class="screen">
+    <button id="startDot" class="pulse-dot" aria-label="Inicia la secuencia"></button>
+    <p class="splash-action">Inicia la secuencia</p>
+  </div>
+
+  <!-- ACTIVACION -->
+  <div id="activation" class="screen">
+    <div class="card glass">
+      <div class="badge">AURIX OS</div>
+      <h1 id="activationTitle">Iniciando sistema...</h1>
+
+      <div class="progress-track">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+
+      <p id="activationMessage">Analizando entorno...</p>
+
+      <button id="btnContinue" class="btn hidden">Continuar</button>
+    </div>
+  </div>
+
+  <script src="tts.js"></script>
+  <script src="audio.js"></script>
+  <script src="voice.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
