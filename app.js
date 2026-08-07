@@ -3815,3 +3815,96 @@ function renderSession2Complete(container, score) {
     injectProgressUI();
   }
 })();
+
+/* ============================================
+   COSMIC HUD: ORBE + GANCHO DE VOZ
+============================================ */
+
+(function () {
+  if (window.aurixCosmicInjected) {
+    return;
+  }
+
+  window.aurixCosmicInjected = true;
+
+  function injectOrb() {
+    if (document.getElementById("aurixOrb")) {
+      return;
+    }
+
+    var orb = document.createElement("div");
+    orb.id = "aurixOrb";
+    orb.className = "aurix-orb";
+    document.body.appendChild(orb);
+  }
+
+  function setSpeaking(on) {
+    document.body.classList.toggle("aurix-speaking", on);
+  }
+
+  function idleCheck() {
+    setTimeout(function () {
+      var busy = ("speechSynthesis" in window) && speechSynthesis.speaking;
+
+      if (!busy) {
+        setSpeaking(false);
+      }
+    }, 250);
+  }
+
+  function hookTTS() {
+    var tts = window.AurixTTS;
+
+    if (!tts || tts._cosmicHooked) {
+      return;
+    }
+
+    tts._cosmicHooked = true;
+
+    ["speakSegment", "speakSegmentFixed"].forEach(function (name) {
+      if (typeof tts[name] !== "function") {
+        return;
+      }
+
+      var orig = tts[name].bind(tts);
+
+      tts[name] = function () {
+        setSpeaking(true);
+
+        var result = orig.apply(tts, arguments);
+
+        if (result && typeof result.then === "function") {
+          result.then(idleCheck).catch(idleCheck);
+        }
+
+        return result;
+      };
+    });
+  }
+
+  function init() {
+    injectOrb();
+    hookTTS();
+
+    var tries = 0;
+
+    var timer = setInterval(function () {
+      tries++;
+      hookTTS();
+
+      if (window.AurixTTS && window.AurixTTS._cosmicHooked) {
+        clearInterval(timer);
+      }
+
+      if (tries > 20) {
+        clearInterval(timer);
+      }
+    }, 500);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
