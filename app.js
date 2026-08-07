@@ -3461,3 +3461,92 @@ function renderSession2Complete(container, score) {
   document.getElementById("s2Back").onclick = function() { renderSessionsPanel(container); };
   ssSpeak("Sesión dos completada. Nivel Cero dominado. " + ssEnQuote("Excellent work."), "narrator");
 }
+
+/* ============================================
+   COLLAPSIBLE SECTIONS PATCH
+============================================ */
+
+(function () {
+  if (window.aurixCollapseInjected) {
+    return;
+  }
+
+  window.aurixCollapseInjected = true;
+
+  var LABELS = {
+    "mp-phrase-list": "Frases aprendidas",
+    "mp-profile-summary": "Resumen de tu perfil",
+    "ob-summary-grid": "Resumen del panel"
+  };
+
+  function addCollapse(section) {
+    if (section.dataset.collapseReady) {
+      return;
+    }
+
+    section.dataset.collapseReady = "1";
+
+    var label = "Ver detalle";
+
+    for (var key in LABELS) {
+      if (section.classList.contains(key)) {
+        label = LABELS[key];
+        break;
+      }
+    }
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "collapse-toggle";
+    btn.innerHTML =
+      "<span>" + label + "</span>" +
+      '<span class="collapse-arrow">▾</span>';
+
+    section.parentNode.insertBefore(btn, section);
+
+    var startOpen = window.innerWidth > 720;
+
+    if (!startOpen) {
+      section.classList.add("collapsed-section");
+      btn.classList.add("collapsed");
+    }
+
+    btn.addEventListener("click", function () {
+      var isCollapsed = section.classList.toggle("collapsed-section");
+      btn.classList.toggle("collapsed", isCollapsed);
+    });
+  }
+
+  function scan() {
+    document
+      .querySelectorAll(".mp-phrase-list, .mp-profile-summary, .ob-summary-grid")
+      .forEach(addCollapse);
+  }
+
+  var timer = null;
+
+  function schedule() {
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    timer = setTimeout(scan, 150);
+  }
+
+  function init() {
+    scan();
+
+    var observer = new MutationObserver(schedule);
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
