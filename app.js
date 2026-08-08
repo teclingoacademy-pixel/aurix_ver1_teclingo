@@ -6094,9 +6094,9 @@ function renderSessionsPanel(container) {
   function apiPost(body) {
     return fetch(window.AURIX_API, {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, mode: "no-cors",
       body: JSON.stringify(body)
-    }).then(function (r) { return r.json(); });
+    }).then(function () { return { ok: true }; });
   }
 
   function sheetToState(data) {
@@ -6587,3 +6587,384 @@ async function startActivation() {
     injectBackBtn();
   }
 })();
+
+/* ============================================
+   LOGROS Y METAS: LEER DE LA DB Y MOSTRAR
+============================================ */
+
+(function () {
+  if (window.__aurixLogrosPatch) {
+    return;
+  }
+
+  window.__aurixLogrosPatch = true;
+
+  /* Extender la carga de usuario para traer logros y metas */
+  var origLoad = window.aurixCloudLoad;
+
+  if (typeof origLoad === "function") {
+    window.aurixCloudLoad = function (userId, cb) {
+      origLoad(userId, function (data) {
+        if (data && data.ok) {
+          appState.logros = (data.logros || []).map(function (r) {
+            return {
+              id: r.logro_id,
+              name: r.logro_name,
+              category: r.category,
+              detail: r.detail
+            };
+          });
+
+          appState.metas = (data.metas || []).map(function (r) {
+            return {
+              type: String(r.meta_type).replace(/_/g, " "),
+              target: Number(r.target) || 0,
+              current: Number(r.current) || 0,
+              status: r.status
+            };
+          });
+
+          if (typeof saveAppState === "function") {
+            saveAppState();
+          }
+        }
+        if (cb) cb(data);
+      });
+    };
+  }
+
+  /* Mostrar logros y metas dentro del panel de progreso */
+  var origPanel = window.renderProgressPanel;
+
+  if (typeof origPanel === "function") {
+    window.renderProgressPanel = function (container) {
+      origPanel(container);
+
+      var list = document.getElementById("prList");
+      if (!list) return;
+
+      var logros = (typeof appState !== "undefined" && appState.logros) ? appState.logros : [];
+      var metas = (typeof appState !== "undefined" && appState.metas) ? appState.metas : [];
+
+      var block = document.createElement("div");
+      block.style.marginTop = "14px";
+
+      var html = '<div class="ms-title" style="margin-bottom:8px;">🏆 Logros y metas</div>';
+
+      if (metas.length) {
+        metas.forEach(function (m) {
+          html +=
+            '<div class="mp-profile-item" style="margin-top:6px;">' +
+              '<div class="mp-profile-label">' + m.type + '</div>' +
+              '<div class="mp-profile-value">' + m.current + '/' + m.target + ' · ' + m.status + '</div>' +
+            '</div>';
+        });
+      }
+
+      if (logros.length) {
+        logros.forEach(function (l) {
+          html +=
+            '<div class="mp-profile-item" style="margin-top:6px;">' +
+              '<div class="mp-profile-label">🏆 ' + l.name + '</div>' +
+              '<div class="mp-profile-value" style="font-size:10px;">' + l.detail + '</div>' +
+            '</div>';
+        });
+      } else {
+        html += '<div class="ms-sub">Aún no hay logros. ¡Practica para ganarlos!</div>';
+      }
+
+      block.innerHTML = html;
+      list.appendChild(block);
+    };
+  }
+})();
+
+/* ============================================
+   SESION 5: NEGACION Y VERBOS AUXILIARES
+   Método: auxiliares por persona + NOT después
+   del auxiliar + 15 ejercicios mezclados.
+============================================ */
+
+function ssSession5Done() {
+  var s = ssGetSessions();
+  return Boolean(s.session5Completed);
+}
+
+var S5_EXERCISES = [
+  { es: "No corro.", en: ["i do not run", "i don't run"] },
+  { es: "No bailas.", en: ["you do not dance", "you don't dance"] },
+  { es: "No comemos.", en: ["we do not eat", "we don't eat"] },
+  { es: "No cantan.", en: ["they do not sing", "they don't sing"] },
+  { es: "No piensas.", en: ["you do not think", "you don't think"] },
+  { es: "No intento.", en: ["i do not try", "i don't try"] },
+  { es: "No esperamos.", en: ["we do not wait", "we don't wait"] },
+  { es: "No duermen.", en: ["they do not sleep", "they don't sleep"] },
+  { es: "Él no está escribiendo.", en: ["he is not writing", "he isn't writing", "he's not writing"] },
+  { es: "Ella no está leyendo.", en: ["she is not reading", "she isn't reading", "she's not reading"] },
+  { es: "Él no está trabajando.", en: ["he is not working", "he isn't working", "he's not working"] },
+  { es: "Ella no está estudiando.", en: ["she is not studying", "she isn't studying", "she's not studying"] },
+  { es: "Eso no está corriendo.", en: ["it is not running", "it isn't running", "it's not running"] },
+  { es: "Él no está esperando.", en: ["he is not waiting", "he isn't waiting", "he's not waiting"] },
+  { es: "Ella no está cantando.", en: ["she is not singing", "she isn't singing", "she's not singing"] }
+];
+
+/* ---------- INTRO ---------- */
+function renderSession5Intro(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 5</div>' +
+      '<h2 class="ob-title">Negación y Verbos Auxiliares</h2>' +
+      '<p class="ob-sub">Los auxiliares definen el tiempo de la oración. Y para negar, la palabra "not" siempre va después del auxiliar.</p>' +
+      '<div class="ob-actions"><button id="s5Start" class="btn">Comenzar</button></div>' +
+    '</div>';
+
+  document.getElementById("s5Start").onclick = function () {
+    renderSession5Aux(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión cinco. Negación y verbos auxiliares. Los auxiliares definen el tiempo de la oración, y la palabra not siempre va después del auxiliar.", "narrator");
+  }
+}
+
+/* ---------- AUXILIARES POR PERSONA ---------- */
+function renderSession5Aux(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">VERBOS AUXILIARES</div>' +
+      '<h2 class="ob-title">¿Quién define el tiempo?</h2>' +
+      '<div class="s4-rule"><b>TIEMPO CONTINUO → auxiliar TO BE</b><br>1ª persona → ' + ssDisplayEn("AM") + '<br>2ªs personas → ' + ssDisplayEn("ARE") + '<br>3ªs personas → ' + ssDisplayEn("IS") + '</div>' +
+      '<div class="s4-rule"><b>TIEMPO SIMPLE → auxiliar DO / DOES</b><br>1ª y 2ªs personas → ' + ssDisplayEn("DO") + '<br>3ªs personas (he, she, it) → ' + ssDisplayEn("DOES") + '</div>' +
+      '<div class="s4-rule"><b>¿Para qué sirven?</b><br>Los verbos auxiliares acompañan al verbo principal para definir el tiempo o la modalidad de la oración.</div>' +
+      '<div class="ob-actions"><button id="s5AuxNext" class="btn">Continuar</button></div>' +
+    '</div>';
+
+  document.getElementById("s5AuxNext").onclick = function () {
+    renderSession5Rule(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("En el tiempo continuo el auxiliar es to be: am, are, is. En el tiempo simple el auxiliar es do, y does para terceras personas. Los auxiliares definen el tiempo de la oración.", "narrator");
+  }
+}
+
+/* ---------- REGLA DE ORO DE LA NEGACION ---------- */
+function renderSession5Rule(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">REGLA DE ORO</div>' +
+      '<h2 class="ob-title">"not" después del auxiliar</h2>' +
+      '<div class="s4-rule"><b>SIMPLE:</b> Sujeto + do/does + ' + ssDisplayEn("not") + ' + verbo (sin -ing).<br>' + ssDisplayEn("I do not run.") + ' = No corro.</div>' +
+      '<div class="s4-rule"><b>CONTINUO:</b> Sujeto + am/is/are + ' + ssDisplayEn("not") + ' + verbo con -ing.<br>' + ssDisplayEn("He is not writing.") + ' = Él no está escribiendo.</div>' +
+      '<div class="s4-rule"><b>Regla absoluta:</b> para negar en inglés, la palabra "not" debe estar después del auxiliar. Punto.</div>' +
+      '<div class="ob-actions"><button id="s5RuleNext" class="btn">Ir a ejercicios</button></div>' +
+    '</div>';
+
+  document.getElementById("s5RuleNext").onclick = function () {
+    renderSession5Exercise(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Para negar en inglés, la palabra not siempre va después del auxiliar. En simple: do not o does not, sin gerundio. En continuo: is not, are not, am not, con gerundio.", "narrator");
+  }
+}
+
+/* ---------- 15 EJERCICIOS MEZCLADOS ---------- */
+function renderSession5Exercise(container) {
+  var rows = "";
+
+  S5_EXERCISES.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s5e' + i + '" class="s4-input" type="text" placeholder="Escribe la negación en inglés...">' +
+        '<div id="s5f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">EJERCICIOS</div>' +
+      '<h2 class="ob-title">Niega en inglés</h2>' +
+      '<p class="ob-sub">Simple: 1ª y 2ª personas con do. Continuo: 3ªs personas con is + -ing. Recuerda: "not" después del auxiliar.</p>' +
+      rows +
+      '<div id="s5Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s5Check" class="btn">Revisar</button>' +
+        '<button id="s5Next" class="btn" disabled>Completar sesión</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s5Check").onclick = function () {
+    var score = 0;
+
+    S5_EXERCISES.forEach(function (item, i) {
+      var inp = document.getElementById("s5e" + i);
+      var fb = document.getElementById("s5f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s5Score = score;
+
+    document.getElementById("s5Score").textContent =
+      "Resultado: " + score + "/" + S5_EXERCISES.length;
+
+    document.getElementById("s5Next").disabled = false;
+  };
+
+  document.getElementById("s5Next").onclick = function () {
+    renderSession5Complete(container, window.__s5Score || 0);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Quince ejercicios mezclados. Escribe la negación en inglés. Recuerda que not siempre va después del auxiliar.", "narrator");
+  }
+}
+
+/* ---------- COMPLETAR ---------- */
+function renderSession5Complete(container, score) {
+  var s = ssGetSessions();
+
+  s.session5Completed = true;
+  s.session5Score = score;
+
+  if (typeof appState !== "undefined") {
+    appState.lastInteraction = "Sesión 5: Negación y Verbos Auxiliares";
+  }
+
+  ssSave();
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 5</div>' +
+      '<h2 class="ob-title">Sesión 5 completada</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Negaciones</div><div class="mp-profile-value">' + score + '/15</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Regla aplicada</div><div class="mp-profile-value">"not" después del auxiliar</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Dominaste la negación en los dos tiempos, sin mezclar personas.</p>' +
+      '<div class="ob-actions"><button id="s5Back" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("s5Back").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión cinco completada. La palabra not ya siempre va después del auxiliar en tu mente. " + ssEnQuote("Excellent work."), "narrator");
+  }
+}
+
+/* ---------- PANEL ACTUALIZADO: 5 SESIONES ---------- */
+function renderSessionsPanel(container) {
+  var s1 = ssSession1Done();
+  var s2 = ssSession2Done();
+  var s3 = ssSession3Done();
+  var s4 = ssSession4Done();
+  var s5 = ssSession5Done();
+
+  var completedCount = 0;
+  if (s1) completedCount++;
+  if (s2) completedCount++;
+  if (s3) completedCount++;
+  if (s4) completedCount++;
+  if (s5) completedCount++;
+
+  var progress = Math.round((completedCount / 5) * 100);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">AURIX OS</div>' +
+      '<h2 class="ob-title">Panel de sesiones</h2>' +
+      '<p class="ob-sub">Tu progreso en el método gramatical puro.</p>' +
+      '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
+      '<p class="ss-status">Progreso: ' + completedCount + '/5 sesiones</p>' +
+      '<div class="ss-grid">' +
+        '<div class="ss-card ' + (s1 ? "completed" : "available") + '">' +
+          '<span class="ss-badge ' + (s1 ? "done" : "next") + '">Sesión 1</span>' +
+          '<div class="ss-title">Primera conversación</div>' +
+          '<div class="ss-status">' + (s1 ? "Completada" : "Disponible") + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s2 ? "completed" : (s1 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s2 ? "done" : (s1 ? "next" : "locked")) + '">Sesión 2</span>' +
+          '<div class="ss-title">Nivel Cero: Singular y Plural</div>' +
+          '<div class="ss-status">' + (s2 ? "Completada" : (s1 ? "Disponible" : "Bloqueada")) + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s3 ? "completed" : (s2 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s3 ? "done" : (s2 ? "next" : "locked")) + '">Sesión 3</span>' +
+          '<div class="ss-title">Filtro Maestro R.O.D.</div>' +
+          '<div class="ss-status">' + (s3 ? "Completada" : (s2 ? "Disponible" : "Bloqueada")) + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s4 ? "completed" : (s3 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s4 ? "done" : (s3 ? "next" : "locked")) + '">Sesión 4</span>' +
+          '<div class="ss-title">Presente Simple vs Continuo</div>' +
+          '<div class="ss-status">' + (s4 ? "Completada" : (s3 ? "Disponible" : "Bloqueada")) + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s5 ? "completed" : (s4 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s5 ? "done" : (s4 ? "next" : "locked")) + '">Sesión 5</span>' +
+          '<div class="ss-title">Negación y Verbos Auxiliares</div>' +
+          '<div class="ss-status">' + (s5 ? "Completada" : (s4 ? "Disponible" : "Bloqueada")) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ss-actions">' +
+        '<button id="ssSession1Btn" class="ob-small-btn">' + (s1 ? "Repetir S1" : "Iniciar S1") + '</button>' +
+        '<button id="ssSession2Btn" class="ob-small-btn" ' + (s1 ? "" : "disabled") + '>' + (s2 ? "Repetir S2" : "Iniciar S2") + '</button>' +
+        '<button id="ssSession3Btn" class="ob-small-btn" ' + (s2 ? "" : "disabled") + '>' + (s3 ? "Repetir S3" : "Iniciar S3") + '</button>' +
+        '<button id="ssSession4Btn" class="ob-small-btn" ' + (s3 ? "" : "disabled") + '>' + (s4 ? "Repetir S4" : "Iniciar S4") + '</button>' +
+        '<button id="ssSession5Btn" class="btn" ' + (s4 ? "" : "disabled") + '>' + (s5 ? "Repetir S5" : "Continuar: Sesión 5") + '</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("ssSession1Btn").onclick = function () {
+    if (typeof renderMissionProfileName === "function") renderMissionProfileName(container);
+  };
+
+  document.getElementById("ssSession2Btn").onclick = function () {
+    if (s1 && typeof renderSession2Intro === "function") renderSession2Intro(container);
+  };
+
+  document.getElementById("ssSession3Btn").onclick = function () {
+    if (s2 && typeof renderSession3Intro === "function") renderSession3Intro(container);
+  };
+
+  document.getElementById("ssSession4Btn").onclick = function () {
+    if (s3) renderSession4Intro(container);
+  };
+
+  document.getElementById("ssSession5Btn").onclick = function () {
+    if (s4) renderSession5Intro(container);
+  };
+
+  ssSpeak("Panel de sesiones. Progreso actual: " + completedCount + " de 5.", "narrator");
+}
+
+/* ---------- PREVIEW DE SIGUIENTE LECCION (con S5) ---------- */
+function aurixNextLessonPreview() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+  var sess = s.sessions || {};
+
+  if (!s.mission1Completed) {
+    return { title: "Sesión 1", preview: "Tu primera conversación: saludos y presentación en inglés." };
+  }
+  if (!sess.session2Completed) {
+    return { title: "Sesión 2", preview: "Nivel Cero: uno = singular, varios = plural. House y Houses, car y cars." };
+  }
+  if (!sess.session3Completed) {
+    return { title: "Sesión 3", preview: "Filtro Maestro R.O.D.: I usa AM; You, We, They usan ARE; He, She, It usan IS." };
+  }
+  if (!sess.session4Completed) {
+    return { title: "Sesión 4", preview: "Presente Simple vs Continuo: sin -ING ser o estar básico; con -ING estar más ando o endo." };
+  }
+  if (!sess.session5Completed) {
+    return { title: "Sesión 5", preview: "Negación y auxiliares: la palabra not siempre va después del auxiliar. Do para 1ª y 2ª, is más -ing para 3ªs." };
+  }
+  return { title: "Repaso", preview: "Practica speaking y rompe tus récords de acento." };
+}
+
