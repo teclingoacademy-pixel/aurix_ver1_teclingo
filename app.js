@@ -7646,3 +7646,761 @@ function renderSessionsPanel(container) {
     }
   }, true);
 })();
+
+/* ============================================
+   CANDADO: NUNCA "CORRECTO:" EN RESPUESTAS MALAS
+============================================ */
+
+(function () {
+  if (window.__aurixClarify) {
+    return;
+  }
+
+  window.__aurixClarify = true;
+
+  document.addEventListener("click", function (e) {
+    var id = e.target && e.target.id;
+
+    if (!id) {
+      return;
+    }
+
+    if (["s4GerundCheck", "s4CheckA", "s4CheckB", "s5Check"].indexOf(id) === -1) {
+      return;
+    }
+
+    setTimeout(function () {
+      document.querySelectorAll(".s4-input.bad").forEach(function (inp) {
+        var fb = inp.parentNode.querySelector(".s4-answer");
+
+        if (!fb || fb.querySelector(".fb-card")) {
+          return;
+        }
+
+        var m = (fb.textContent || "").match(/Correcto:\s*(.+)$/);
+
+        if (m) {
+          fb.innerHTML =
+            '<div class="fb-card fb-bad">' +
+              '<div>❌ Incorrecto.</div>' +
+              '<div class="fb-example">La forma correcta es: <b>' + m[1] + '</b></div>' +
+              '<div class="fb-fixed">Revisa la regla de esta pantalla y vuelve a intentarlo.</div>' +
+            '</div>';
+        }
+      });
+    }, 150);
+  });
+})();
+
+/* ============================================
+   BIBLIOTECA AURIX A1
+   Reglas del nivel + buscador + video + botones
+   "Ver regla" dentro de cada error.
+============================================ */
+
+(function () {
+  if (window.__aurixLibInjected) {
+    return;
+  }
+
+  window.__aurixLibInjected = true;
+
+  var LIB = [
+    { id: "sing-plural", nivel: "A1", tema: "Nivel Cero", titulo: "Singular y Plural", keywords: ["singular", "plural", "uno", "varios", "muchos", "houses"], texto: "UNO = singular. VARIOS / MUCHOS / MÁS DE UNO = plural. En inglés, el plural generalmente agrega -S.", ejemplos: ["house → houses", "car → cars"], video: "" },
+    { id: "pron-personas", nivel: "A1", tema: "Nivel Cero", titulo: "Pronombres por persona", keywords: ["pronombres", "persona", "you", "we", "they", "he", "she", "it"], texto: "1ª persona: I. 2ªs personas: You, We, They. 3ªs personas: He, She, It. Nunca se mezclan.", ejemplos: ["I → 1ª persona", "You, We, They → 2ªs personas", "He, She, It → 3ªs personas"], video: "" },
+    { id: "rod", nivel: "A1", tema: "Verbo To Be", titulo: "Filtro Maestro R.O.D.", keywords: ["am", "are", "is", "rod", "filtro", "canal"], texto: "1ª persona → AM. 2ªs personas → ARE. 3ªs personas → IS. Cada canal tiene una única salida.", ejemplos: ["I am", "You / We / They are", "He / She / It is"], video: "" },
+    { id: "tobe", nivel: "A1", tema: "Verbo To Be", titulo: "Verbo To Be (Ser / Estar)", keywords: ["to be", "ser", "estar", "soy", "estoy"], texto: "En inglés, SER y ESTAR son un solo verbo: To Be. La traducción depende del complemento.", ejemplos: ["I am = yo soy / estoy", "He is = él es / está"], video: "" },
+    { id: "ger-general", nivel: "A1", tema: "Gerundio", titulo: "Gerundio: regla general", keywords: ["gerundio", "ing", "ando", "endo"], texto: "Al verbo se le agrega -ING.", ejemplos: ["work → working"], video: "" },
+    { id: "ger-e", nivel: "A1", tema: "Gerundio", titulo: "Gerundio: -E muda", keywords: ["e muda", "write", "writing", "termina en e"], texto: "Si el verbo termina en -E muda, la E se reemplaza por -ING (se quita).", ejemplos: ["write → writing (no writeing)"], video: "" },
+    { id: "ger-cvc", nivel: "A1", tema: "Gerundio", titulo: "Gerundio: C-V-C duplica", keywords: ["duplicar", "consonante", "run", "swim", "running"], texto: "Monosílabo consonante-vocal-consonante: la última consonante se duplica y luego -ING.", ejemplos: ["run → running", "swim → swimming"], video: "" },
+    { id: "ger-y", nivel: "A1", tema: "Gerundio", titulo: "Gerundio: consonante + Y", keywords: ["y", "study", "studying"], texto: "Con consonante + Y, la Y se queda; solo agrega -ING.", ejemplos: ["study → studying"], video: "" },
+    { id: "simple-continuo", nivel: "A1", tema: "Tiempos", titulo: "Simple vs Continuo (Regla de Oro)", keywords: ["simple", "continuo", "ing", "diferencia"], texto: "Sin -ING = Ser/Estar básico (Simple). Con -ING = Estar + Ando/Endo (Continuo).", ejemplos: ["It is a house.", "I am working."], video: "" },
+    { id: "negacion", nivel: "A1", tema: "Negación", titulo: "Negación: NOT después del auxiliar", keywords: ["not", "negar", "negacion", "don't"], texto: "Para negar, la palabra NOT va siempre después del auxiliar.", ejemplos: ["I do not run.", "He is not writing."], video: "" },
+    { id: "auxiliares", nivel: "A1", tema: "Negación", titulo: "Verbos auxiliares", keywords: ["auxiliar", "do", "does", "am", "is", "are"], texto: "Los auxiliares definen el tiempo de la oración. Continuo → am/is/are. Simple → do/does.", ejemplos: ["do (1ª y 2ªs personas)", "does (3ªs personas)"], video: "" },
+    { id: "tercera-s", nivel: "A1", tema: "Tercera persona", titulo: "3ª persona del Simple: -S / -ES / -IES", keywords: ["tercera", "s", "es", "ies", "has", "goes"], texto: "Regla general: +S. Termina en O, X, S, SH, Z: +ES. Consonante + Y: la Y cambia a IES. have → has.", ejemplos: ["wait → waits", "go → goes", "study → studies", "have → has"], video: "" },
+    { id: "pronombre-obligatorio", nivel: "A1", tema: "Reglas de oro", titulo: "El pronombre nunca se omite", keywords: ["pronombre", "omitir", "sujeto"], texto: "A diferencia del español, en inglés el pronombre siempre se escribe en todas las frases.", ejemplos: ["Corro. → I run."], video: "" },
+    { id: "preposiciones", nivel: "A1", tema: "Preposiciones", titulo: "Preposiciones IN / ON / AT", keywords: ["in", "on", "at", "preposicion", "tiempo", "lugar"], texto: "AT: puntos específicos y horas. ON: superficies, días y fechas. IN: espacios cerrados, meses, años y estaciones.", ejemplos: ["at 3:00", "on Monday", "in September"], video: "" }
+  ];
+
+  function findRule(id) {
+    for (var i = 0; i < LIB.length; i++) {
+      if (LIB[i].id === id) return LIB[i];
+    }
+    return LIB[0];
+  }
+
+  function ytId(url) {
+    if (!url) return null;
+    var m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    if (m) return m[1];
+    if (/^[\w-]{11}$/.test(String(url).trim())) return String(url).trim();
+    return null;
+  }
+
+  function libVideoUrl(rule) {
+    try {
+      var v = localStorage.getItem("aurix_lib_video_" + rule.id);
+      if (v) return v;
+    } catch (e) {}
+    return rule.video || "";
+  }
+
+  function libSearch(q) {
+    q = String(q || "").toLowerCase().trim();
+    if (!q) return LIB.slice(0, 6);
+    var words = q.split(/\s+/);
+    return LIB.filter(function (r) {
+      var hay = (r.titulo + " " + r.tema + " " + r.keywords.join(" ") + " " + r.texto).toLowerCase();
+      return words.every(function (w) { return hay.indexOf(w) > -1; });
+    });
+  }
+
+  var lastQuery = "";
+
+  function showList(q) {
+    lastQuery = q || "";
+    var body = document.getElementById("libBody");
+    var sug = document.getElementById("libSuggest");
+    if (!body) return;
+    if (sug) sug.innerHTML = "";
+
+    var res = libSearch(lastQuery);
+
+    if (!res.length) {
+      body.innerHTML = '<div class="ms-sub">Sin resultados en Nivel A1 para "' + lastQuery + '".</div>';
+      return;
+    }
+
+    body.innerHTML = res.map(function (r) {
+      return '<div class="lib-item" data-lib="' + r.id + '">' +
+        '<span class="lib-tema">' + r.tema + ' · ' + r.nivel + '</span>' +
+        '<b>' + r.titulo + '</b>' +
+      '</div>';
+    }).join("");
+  }
+
+  function openRule(id) {
+    var r = findRule(id);
+    var body = document.getElementById("libBody");
+    var sug = document.getElementById("libSuggest");
+    if (!body) return;
+    if (sug) sug.innerHTML = "";
+
+    var vid = libVideoUrl(r);
+    var yid = ytId(vid);
+    var vidHtml = "";
+
+    if (yid) {
+      vidHtml = '<div class="yt-frame" style="display:block;"><iframe src="https://www.youtube.com/embed/' + yid + '" title="Video de la regla" frameborder="0" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>';
+    }
+
+    body.innerHTML =
+      '<div class="lib-rule">' +
+        '<span class="lib-tema">' + r.tema + ' · ' + r.nivel + '</span>' +
+        '<h3 class="lib-title">' + r.titulo + '</h3>' +
+        '<p class="lib-text">' + r.texto + '</p>' +
+        r.ejemplos.map(function (x) { return '<div class="s4-rule">• ' + x + '</div>'; }).join("") +
+        vidHtml +
+        '<div class="yt-controls">' +
+          '<input id="libVideoInput" class="s4-input yt-input" type="text" placeholder="Pega el link de YouTube de esta regla..." value="' + vid.replace(/"/g, "&quot;") + '">' +
+          '<button id="libVideoSave" class="btn yt-load" type="button">Vincular</button>' +
+        '</div>' +
+        '<div class="ob-actions"><button id="libBack" class="ob-small-btn">← Volver</button></div>' +
+      '</div>';
+
+    document.getElementById("libVideoSave").addEventListener("click", function () {
+      try {
+        localStorage.setItem("aurix_lib_video_" + r.id, document.getElementById("libVideoInput").value.trim());
+      } catch (e) {}
+      openRule(id);
+    });
+
+    document.getElementById("libBack").addEventListener("click", function () {
+      showList(lastQuery);
+    });
+  }
+
+  function injectLib() {
+    if (document.getElementById("libModal")) return;
+
+    var fab = document.createElement("button");
+    fab.id = "aurixLibFab";
+    fab.type = "button";
+    fab.className = "aurix-lib-fab";
+    fab.innerHTML = "📚";
+    fab.setAttribute("aria-label", "Biblioteca de reglas");
+    document.body.appendChild(fab);
+
+    var modal = document.createElement("div");
+    modal.id = "libModal";
+    modal.className = "mic-modal hidden";
+    modal.innerHTML =
+      '<div class="mic-card">' +
+        '<div class="ms-title">📚 Biblioteca AURIX · Nivel A1</div>' +
+        '<input id="libSearch" class="s4-input" type="text" placeholder="Busca: gerundio, not, preposiciones..." autocomplete="off">' +
+        '<div id="libSuggest" class="lib-suggest"></div>' +
+        '<div id="libBody" class="lib-body"></div>' +
+        '<div class="ob-actions"><button id="libClose" class="btn">Cerrar</button></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    fab.addEventListener("click", function () {
+      window.aurixOpenLib();
+    });
+
+    document.getElementById("libClose").addEventListener("click", function () {
+      modal.classList.add("hidden");
+    });
+
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    var input = document.getElementById("libSearch");
+    var sug = document.getElementById("libSuggest");
+
+    input.addEventListener("input", function () {
+      var q = input.value.trim();
+
+      if (!q) {
+        sug.innerHTML = "";
+        showList("");
+        return;
+      }
+
+      var res = libSearch(q).slice(0, 5);
+
+      sug.innerHTML = res.map(function (r) {
+        return '<button class="lib-sug" type="button" data-lib="' + r.id + '">🔎 ' + r.titulo + '</button>';
+      }).join("");
+
+      showList(q);
+    });
+
+    sug.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-lib]");
+      if (b) openRule(b.getAttribute("data-lib"));
+    });
+
+    document.getElementById("libBody").addEventListener("click", function (e) {
+      var item = e.target.closest(".lib-item");
+      if (item) openRule(item.getAttribute("data-lib"));
+    });
+  }
+
+  window.aurixOpenLib = function (ruleId) {
+    injectLib();
+    document.getElementById("libModal").classList.remove("hidden");
+    if (ruleId) openRule(ruleId);
+    else showList("");
+  };
+
+  /* ---------- Detecta qué regla falló y agrega "Ver regla" ---------- */
+
+  function detectRule(row, inp) {
+    var user = (inp.value || "").toLowerCase().replace(/\s+/g, " ").trim();
+    var es = row.querySelector(".s4-es");
+    var label = es ? es.textContent : "";
+    var fb = row.querySelector(".s4-answer");
+    var m = fb ? (fb.textContent || "").match(/correcta es:\s*([a-z']+)/i) : null;
+    var correct = m ? m[1].trim() : "";
+
+    var vm = label.match(/"([a-z]+)"/i);
+
+    if (vm) {
+      var verb = vm[1].toLowerCase();
+      if (user === verb + "ing") {
+        return verb.slice(-1) === "e" ? "ger-e" : "ger-cvc";
+      }
+      if (user === verb.replace(/y$/, "") + "ing") return "ger-y";
+      return "ger-general";
+    }
+
+    if (correct.indexOf(" not ") > -1 || correct.indexOf("n't") > -1) {
+      if (user.indexOf(" not ") === -1 && user.indexOf("n't") === -1) return "negacion";
+      if (!/\b(am|is|are|do|does)\b/.test(user)) return "auxiliares";
+      if (correct.slice(-3) === "ing" && user.indexOf("ing") === -1) return "simple-continuo";
+    }
+
+    var cu = correct.split(" ");
+    var uu = user.split(" ");
+
+    if (/^(he|she|it)$/.test(cu[0]) && /s$/.test(cu[cu.length - 1]) && uu.length && !/s$/.test(uu[uu.length - 1])) {
+      return "tercera-s";
+    }
+
+    if (correct && user && cu[0] !== uu[0]) return "pronombre-obligatorio";
+
+    return "simple-continuo";
+  }
+
+  function attachRuleButtons() {
+    document.querySelectorAll(".s4-row").forEach(function (row) {
+      var inp = row.querySelector(".s4-input.bad");
+      var fbBox = row.querySelector(".s4-answer");
+
+      if (!inp || !fbBox) return;
+
+      var fb = fbBox.querySelector(".fb-card.fb-bad") || fbBox;
+      if (fb.querySelector(".lib-open-btn")) return;
+
+      var rid = detectRule(row, inp);
+      var rule = findRule(rid);
+
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "lib-open-btn";
+      b.textContent = "📚 Ver regla: " + rule.titulo;
+      b.addEventListener("click", function () {
+        window.aurixOpenLib(rid);
+      });
+
+      fb.appendChild(b);
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var id = e.target && e.target.id;
+    if (["s4GerundCheck", "s4CheckA", "s4CheckB", "s5Check"].indexOf(id) === -1) return;
+    setTimeout(attachRuleButtons, 250);
+  });
+
+  injectLib();
+})();
+
+/* ============================================
+   BIBLIOTECA AURIX v2: REGLAS COMPLETAS
+   Cada tarjeta = TODAS las sub-reglas +
+   ejemplos + errores comunes del método.
+============================================ */
+
+(function () {
+  if (window.__aurixLibV2) {
+    return;
+  }
+
+  window.__aurixLibV2 = true;
+
+  var LIB2 = [
+    {
+      id: "sing-plural", nivel: "A1", tema: "Nivel Cero", titulo: "Singular y Plural",
+      keywords: ["singular", "plural", "uno", "varios", "muchos", "s"],
+      texto: "En inglés, como en español, distinguimos UNO (singular) de VARIOS (plural). El plural generalmente agrega -S.",
+      secciones: [
+        { sub: "Singular = UNO", texto: "Un solo elemento.", ejemplos: ["house = casa", "car = carro", "dog = perro"], error: "", ids: [] },
+        { sub: "Plural = VARIOS / MUCHOS / MÁS DE UNO", texto: "Regla general: se agrega -S al final.", ejemplos: ["houses = casas", "cars = carros", "dogs = perros"], error: "Error común: olvidar la -S (house en lugar de houses).", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "pron-personas", nivel: "A1", tema: "Nivel Cero", titulo: "Pronombres por persona",
+      keywords: ["pronombres", "persona", "you", "we", "they", "he", "she", "it"],
+      texto: "Los pronombres se clasifican en 3 personas gramaticales. Esta clasificación decide qué verbo se usa.",
+      secciones: [
+        { sub: "1ª persona", texto: "Quien habla.", ejemplos: ["I = yo"], error: "", ids: [] },
+        { sub: "2ªs personas (PLURALES)", texto: "You es plural porque requiere mínimo dos personas: quien habla y quien escucha.", ejemplos: ["You = tú / ustedes", "We = nosotros", "They = ellos"], error: "", ids: [] },
+        { sub: "3ªs personas (SINGULARES)", texto: "De quien se habla.", ejemplos: ["He = él", "She = ella", "It = eso / animal / cosa"], error: "Error común: mezclar personas confunde el verbo.", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "rod", nivel: "A1", tema: "Verbo To Be", titulo: "Filtro Maestro R.O.D.",
+      keywords: ["am", "are", "is", "rod", "filtro", "canal"],
+      texto: "El Filtro conecta cada persona con su única forma de To Be. No hay salidas cruzadas.",
+      secciones: [
+        { sub: "Canal 1 — 1ª persona → AM", texto: "Exclusivo para I.", ejemplos: ["I am = yo soy / estoy"], error: "", ids: [] },
+        { sub: "Canal 2 — 2ªs personas → ARE", texto: "Exclusivo para plurales You, We, They.", ejemplos: ["You are", "We are", "They are"], error: "", ids: [] },
+        { sub: "Canal 3 — 3ªs personas → IS", texto: "Exclusivo para singulares He, She, It.", ejemplos: ["He is", "She is", "It is"], error: "Error común: I are o He are NO existen.", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "tobe", nivel: "A1", tema: "Verbo To Be", titulo: "Verbo To Be (Ser / Estar)",
+      keywords: ["to be", "ser", "estar", "soy", "estoy", "contracciones"],
+      texto: "To Be unifica SER y ESTAR en un solo verbo. La traducción depende del complemento.",
+      secciones: [
+        { sub: "Conjugación con traducción", texto: "Presente.", ejemplos: ["I am = yo soy / estoy", "You are = tú eres / estás", "He is = él es / está", "We are = nosotros somos / estamos", "They are = ellos son / están"], error: "", ids: [] },
+        { sub: "Contracciones", texto: "Forma corta afirmativa.", ejemplos: ["I'm", "you're", "he's", "she's", "it's", "we're", "they're"], error: "", ids: [] },
+        { sub: "Negación", texto: "NOT después del verbo.", ejemplos: ["am not", "is not = isn't", "are not = aren't"], error: "", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "gerundio", nivel: "A1", tema: "Gerundio", titulo: "El Gerundio (-ING): TODAS las reglas",
+      keywords: ["gerundio", "ing", "ando", "endo", "write", "run", "study", "swim"],
+      texto: "El gerundio equivale a -ANDO / -ENDO en español. Se usa en los tiempos continuos. CON -ING = estar + ando/endo.",
+      secciones: [
+        { sub: "Regla 1 — General: + ING", texto: "Al verbo en forma base se le agrega -ING.", ejemplos: ["work → working", "eat → eating", "play → playing"], error: "", ids: ["ger-general"] },
+        { sub: "Regla 2 — Termina en -E muda", texto: "La -E se reemplaza por -ING (se quita).", ejemplos: ["write → writing", "dance → dancing"], error: "Error común: writeing (la E no se queda).", ids: ["ger-e"] },
+        { sub: "Regla 3 — Monosílabo C-V-C", texto: "Consonante-Vocal-Consonante: se duplica la última consonante y se agrega -ING.", ejemplos: ["run → running", "swim → swimming", "sit → sitting"], error: "Error común: runing / swiming (falta duplicar).", ids: ["ger-cvc"] },
+        { sub: "Regla 4 — Consonante + Y", texto: "La Y se queda sin cambios; solo se agrega -ING.", ejemplos: ["study → studying", "try → trying"], error: "Error común: studing (no se pierde la Y).", ids: ["ger-y"] }
+      ], video: ""
+    },
+    {
+      id: "simple-continuo", nivel: "A1", tema: "Tiempos", titulo: "Simple vs Continuo (Regla de Oro)",
+      keywords: ["simple", "continuo", "ing", "diferencia"],
+      texto: "Dos tiempos distintos. El -ING es lo único que los separa.",
+      secciones: [
+        { sub: "SIMPLE: sin -ING", texto: "Ser/estar básico o verbo solo. Estados, hábitos, identidad.", ejemplos: ["It is a house. = Es una casa.", "He writes. = Él escribe."], error: "", ids: [] },
+        { sub: "CONTINUO: con -ING", texto: "Estar + ando/endo. Acciones en proceso.", ejemplos: ["I am working. = Estoy trabajando.", "He is writing. = Él está escribiendo."], error: "", ids: [] },
+        { sub: "Regla de Oro", texto: "Sin -ING = Simple. Con -ING = Continuo.", ejemplos: ["He writes (simple) vs He is writing (continuo)"], error: "Error común: usar -ING en el simple.", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "negacion", nivel: "A1", tema: "Negación", titulo: "Negación: NOT después del auxiliar",
+      keywords: ["not", "negar", "negacion", "don't", "isn't"],
+      texto: "Para negar en inglés, la palabra NOT va siempre después del auxiliar. Sin excepciones.",
+      secciones: [
+        { sub: "Negar en SIMPLE", texto: "do / does + not + verbo sin -ING.", ejemplos: ["I do not run.", "You do not dance.", "They do not sing."], error: "", ids: [] },
+        { sub: "Negar en CONTINUO", texto: "am / is / are + not + verbo con -ING.", ejemplos: ["He is not writing.", "She is not reading.", "They are not sleeping."], error: "", ids: [] },
+        { sub: "Contracciones", texto: "Forma corta.", ejemplos: ["don't", "doesn't", "isn't", "aren't"], error: "Error común: I run not (NOT sin auxiliar o antes del auxiliar).", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "auxiliares", nivel: "A1", tema: "Negación", titulo: "Verbos auxiliares",
+      keywords: ["auxiliar", "do", "does", "am", "is", "are"],
+      texto: "Los auxiliares acompañan al verbo principal y definen el tiempo de la oración.",
+      secciones: [
+        { sub: "Auxiliar del CONTINUO: TO BE", texto: "Por persona.", ejemplos: ["1ª → am", "2ªs → are", "3ªs → is"], error: "", ids: [] },
+        { sub: "Auxiliar del SIMPLE: DO / DOES", texto: "Por persona.", ejemplos: ["1ª y 2ªs → do", "3ªs → does"], error: "", ids: [] },
+        { sub: "¿Para qué sirven?", texto: "Definen el tiempo y permiten negar y preguntar.", ejemplos: ["do not run (simple)", "is not writing (continuo)"], error: "", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "tercera-s", nivel: "A1", tema: "Tercera persona", titulo: "3ª persona del Simple: -S / -ES / -IES / HAS",
+      keywords: ["tercera", "s", "es", "ies", "has", "goes"],
+      texto: "En el presente simple, la 3ª persona singular (he/she/it) transforma el verbo.",
+      secciones: [
+        { sub: "Regla general: + S", texto: "Se agrega -S.", ejemplos: ["wait → waits", "run → runs", "eat → eats"], error: "", ids: [] },
+        { sub: "Termina en O, X, S, SH, Z: + ES", texto: "Se agrega -ES.", ejemplos: ["go → goes", "do → does"], error: "", ids: [] },
+        { sub: "Consonante + Y: Y → IES", texto: "La Y cambia a IES.", ejemplos: ["study → studies", "try → tries"], error: "", ids: [] },
+        { sub: "have → has", texto: "Irregular.", ejemplos: ["have → has"], error: "Error común: he write (falta la -S).", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "pronombre-obligatorio", nivel: "A1", tema: "Reglas de oro", titulo: "El pronombre nunca se omite",
+      keywords: ["pronombre", "omitir", "sujeto"],
+      texto: "En inglés el pronombre siempre se escribe, aunque en español no aparezca.",
+      secciones: [
+        { sub: "Siempre escrito", texto: "Todas las frases llevan su pronombre.", ejemplos: ["Corro. → I run.", "Llueve. → It rains."], error: "Error común: Run. sin pronombre.", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "preposiciones", nivel: "A1", tema: "Preposiciones", titulo: "Preposiciones IN / ON / AT",
+      keywords: ["in", "on", "at", "preposicion", "tiempo", "lugar"],
+      texto: "IN / ON / AT se usan para lugar y tiempo. Cada una tiene su territorio.",
+      secciones: [
+        { sub: "AT — hora y puntos específicos", texto: "Horas exactas y momentos.", ejemplos: ["at 3:00", "at 8:00 AM", "at night"], error: "", ids: [] },
+        { sub: "ON — superficies, días y fechas", texto: "Días, fechas y calles.", ejemplos: ["on the table", "on Monday", "on May 1st", "on Main Street"], error: "", ids: [] },
+        { sub: "IN — espacios cerrados y periodos largos", texto: "Meses, años, estaciones, lugares cerrados.", ejemplos: ["in the car", "in an apartment", "in September", "in summer", "in the morning"], error: "Error común: in Monday / at September.", ids: [] }
+      ], video: ""
+    },
+    {
+      id: "vocab-verbos", nivel: "A1", tema: "Vocabulario", titulo: "Verbos base del método",
+      keywords: ["verbos", "run", "write", "work", "study", "traduccion"],
+      texto: "Los verbos base del método con su traducción al español. Úsalos como referencia en los ejercicios.",
+      secciones: [
+        { sub: "Los 10 verbos", texto: "Forma base = sin -ING, sin -S.", ejemplos: ["run = correr", "dance = bailar", "write = escribir", "read = leer", "eat = comer", "sing = cantar", "sleep = dormir", "think = pensar", "try = intentar", "wait = esperar"], error: "", ids: [] },
+        { sub: "Verbos adicionales", texto: "Para reglas especiales.", ejemplos: ["work = trabajar", "study = estudiar", "go = ir", "do = hacer", "have = tener"], error: "", ids: [] }
+      ], video: ""
+    }
+  ];
+
+  function findRule2(id) {
+    for (var i = 0; i < LIB2.length; i++) {
+      var r = LIB2[i];
+      if (r.id === id) return r;
+      for (var s = 0; s < r.secciones.length; s++) {
+        if (r.secciones[s].ids && r.secciones[s].ids.indexOf(id) > -1) return r;
+      }
+    }
+    return null;
+  }
+
+  function hlSection(rule, id) {
+    for (var s = 0; s < rule.secciones.length; s++) {
+      if (rule.secciones[s].ids && rule.secciones[s].ids.indexOf(id) > -1) return s;
+    }
+    return -1;
+  }
+
+  function ytId2(url) {
+    if (!url) return null;
+    var m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    if (m) return m[1];
+    if (/^[\w-]{11}$/.test(String(url).trim())) return String(url).trim();
+    return null;
+  }
+
+  function videoUrl2(rule) {
+    try {
+      var v = localStorage.getItem("aurix_lib_video_" + rule.id);
+      if (v) return v;
+    } catch (e) {}
+    return rule.video || "";
+  }
+
+  function search2(q) {
+    q = String(q || "").toLowerCase().trim();
+    if (!q) return LIB2;
+    var words = q.split(/\s+/);
+    return LIB2.filter(function (r) {
+      var hay = (r.titulo + " " + r.tema + " " + r.keywords.join(" ") + " " + r.texto + " " +
+        r.secciones.map(function (s) { return s.sub + " " + s.texto + " " + s.ejemplos.join(" "); }).join(" ")
+      ).toLowerCase();
+      return words.every(function (w) { return hay.indexOf(w) > -1; });
+    });
+  }
+
+  var lastQ2 = "";
+
+  function list2(q) {
+    lastQ2 = q || "";
+    var body = document.getElementById("lib2Body");
+    if (!body) return;
+    var res = search2(lastQ2);
+    if (!res.length) {
+      body.innerHTML = '<div class="ms-sub">Sin resultados en Nivel A1.</div>';
+      return;
+    }
+    body.innerHTML = res.map(function (r) {
+      return '<div class="lib-item" data-lib="' + r.id + '">' +
+        '<span class="lib-tema">' + r.tema + ' · ' + r.nivel + '</span>' +
+        '<b>' + r.titulo + '</b>' +
+      '</div>';
+    }).join("");
+  }
+
+  function openRule2(id) {
+    var rule = findRule2(id) || LIB2[0];
+    var hi = hlSection(rule, id);
+    var body = document.getElementById("lib2Body");
+    var sug = document.getElementById("lib2Suggest");
+    if (!body) return;
+    if (sug) sug.innerHTML = "";
+
+    var vid = videoUrl2(rule);
+    var yid = ytId2(vid);
+    var vidHtml = yid
+      ? '<div class="yt-frame" style="display:block;"><iframe src="https://www.youtube.com/embed/' + yid + '" title="Video de la regla" frameborder="0" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>'
+      : "";
+
+    var html =
+      '<div class="lib-rule">' +
+        '<span class="lib-tema">' + rule.tema + ' · ' + rule.nivel + '</span>' +
+        '<h3 class="lib-title">' + rule.titulo + '</h3>' +
+        '<p class="lib-text">' + rule.texto + '</p>';
+
+    rule.secciones.forEach(function (sec, i) {
+      html +=
+        '<div class="lib-sec' + (i === hi ? " lib-hl" : "") + '">' +
+          '<div class="lib-sec-title">' + sec.sub + '</div>' +
+          '<div class="lib-sec-text">' + sec.texto + '</div>' +
+          sec.ejemplos.map(function (x) { return '<div class="s4-rule">• ' + x + '</div>'; }).join("") +
+          (sec.error ? '<div class="lib-err">⚠ ' + sec.error + '</div>' : "") +
+        '</div>';
+    });
+
+    html +=
+        vidHtml +
+        '<div class="yt-controls">' +
+          '<input id="lib2VideoInput" class="s4-input yt-input" type="text" placeholder="Pega el link de YouTube de esta regla..." value="' + vid.replace(/"/g, "&quot;") + '">' +
+          '<button id="lib2VideoSave" class="btn yt-load" type="button" data-rule="' + rule.id + '">Vincular</button>' +
+        '</div>' +
+        '<div class="ob-actions"><button id="lib2Back" class="ob-small-btn">← Volver</button></div>' +
+      '</div>';
+
+    body.innerHTML = html;
+  }
+
+  function ensureModal2() {
+    if (document.getElementById("lib2Modal")) return;
+
+    var modal = document.createElement("div");
+    modal.id = "lib2Modal";
+    modal.className = "mic-modal hidden";
+    modal.innerHTML =
+      '<div class="mic-card">' +
+        '<div class="ms-title">📚 Biblioteca AURIX · Nivel A1</div>' +
+        '<input id="lib2Search" class="s4-input" type="text" placeholder="Busca: gerundio, not, preposiciones..." autocomplete="off">' +
+        '<div id="lib2Suggest" class="lib-suggest"></div>' +
+        '<div id="lib2Body" class="lib-body"></div>' +
+        '<div class="ob-actions"><button id="lib2Close" class="btn">Cerrar</button></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    document.getElementById("lib2Close").addEventListener("click", function () {
+      modal.classList.add("hidden");
+    });
+
+    modal.addEventListener("click", function (e) {
+      if (e.target === modal) modal.classList.add("hidden");
+    });
+
+    document.getElementById("lib2Search").addEventListener("input", function () {
+      var q = this.value.trim();
+      var sug = document.getElementById("lib2Suggest");
+      if (!q) {
+        sug.innerHTML = "";
+        list2("");
+        return;
+      }
+      var res = search2(q).slice(0, 5);
+      sug.innerHTML = res.map(function (r) {
+        return '<button class="lib-sug" type="button" data-lib="' + r.id + '">🔎 ' + r.titulo + '</button>';
+      }).join("");
+      list2(q);
+    });
+
+    document.getElementById("lib2Suggest").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-lib]");
+      if (b) openRule2(b.getAttribute("data-lib"));
+    });
+
+    document.getElementById("lib2Body").addEventListener("click", function (e) {
+      var item = e.target.closest(".lib-item");
+      if (item) {
+        openRule2(item.getAttribute("data-lib"));
+        return;
+      }
+      if (e.target.id === "lib2VideoSave") {
+        var rid = e.target.getAttribute("data-rule");
+        try {
+          localStorage.setItem("aurix_lib_video_" + rid, document.getElementById("lib2VideoInput").value.trim());
+        } catch (err) {}
+        openRule2(rid);
+        return;
+      }
+      if (e.target.id === "lib2Back") {
+        list2(lastQ2);
+      }
+    });
+  }
+
+  window.aurixOpenLib = function (ruleId) {
+    ensureModal2();
+    var old = document.getElementById("libModal");
+    if (old) old.classList.add("hidden");
+    document.getElementById("lib2Modal").classList.remove("hidden");
+    if (ruleId) openRule2(ruleId);
+    else list2("");
+  };
+})();
+
+/* ============================================
+   MENU UNICO FLOTANTE: TODAS LAS BURBUJAS
+   EN UN SOLO LUGAR + CIERRE AUTOMATICO
+============================================ */
+
+(function () {
+  if (window.__aurixMenuDockInjected) {
+    return;
+  }
+
+  window.__aurixMenuDockInjected = true;
+
+  var ORDER = [
+    "#aurixBackBtn",
+    "#aurixHomeBtn",
+    "#aurixProgressFab",
+    "#cloudUserChip",
+    "#aurixLibFab",
+    ".aurix-settings-toggle",
+    ".aurix-mic-fab",
+    ".aurix-repeat",
+    ".aurix-power-btn"
+  ];
+
+  var timer = null;
+
+  function dock() {
+    return document.getElementById("aurixMenuDock");
+  }
+
+  function launcher() {
+    return document.getElementById("aurixMenuLauncher");
+  }
+
+  function collect() {
+    var d = dock();
+    if (!d) return;
+
+    ORDER.forEach(function (sel) {
+      var el = document.querySelector(sel);
+      if (el && el.parentNode !== d) {
+        d.appendChild(el);
+      }
+    });
+
+    /* La flecha del setup de mic ahora guia al menu */
+    document.querySelectorAll(".ms-arrow span").forEach(function (s) {
+      s.textContent = "abre ☰ y toca 🎤";
+    });
+  }
+
+  function disarm() {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  }
+
+  function armAutoClose() {
+    disarm();
+    timer = setTimeout(function () {
+      setOpen(false);
+    }, 6000);
+  }
+
+  function setOpen(open) {
+    var d = dock();
+    var l = launcher();
+    if (!d || !l) return;
+
+    d.classList.toggle("open", open);
+    l.innerHTML = open ? "✕" : "☰";
+
+    if (open) armAutoClose();
+    else disarm();
+  }
+
+  function init() {
+    if (document.getElementById("aurixMenuLauncher")) return;
+
+    var d = document.createElement("div");
+    d.id = "aurixMenuDock";
+    document.body.appendChild(d);
+
+    var l = document.createElement("button");
+    l.id = "aurixMenuLauncher";
+    l.type = "button";
+    l.innerHTML = "☰";
+    l.setAttribute("aria-label", "Menú");
+    document.body.appendChild(l);
+
+    l.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setOpen(!d.classList.contains("open"));
+    });
+
+    /* Tras usar cualquier opcion, el menu se va */
+    d.addEventListener("click", function () {
+      armAutoClose();
+      setTimeout(function () {
+        setOpen(false);
+      }, 450);
+    });
+
+    /* Tocar fuera tambien lo cierra */
+    document.addEventListener("click", function (e) {
+      if (d.classList.contains("open") && !d.contains(e.target) && e.target !== l) {
+        setOpen(false);
+      }
+    }, true);
+
+    collect();
+    setInterval(collect, 1200);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
