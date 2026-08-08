@@ -4827,104 +4827,6 @@ function aurixSpeakQueued(text) {
 })();
 
 /* ============================================
-   RESUME ROUTER: CONTINUAR DONDE TE QUEDASTE
-============================================ */
-
-function aurixNextStepInfo() {
-  var s = (typeof appState !== "undefined") ? appState : {};
-  var sess = s.sessions || {};
-
-  if (!s.onboardingCompleted && !s.mission1Completed) {
-    return "Tu siguiente paso: completar tu ADN de aprendizaje.";
-  }
-
-  if (!s.mission1Completed) {
-    return "Tu siguiente paso: Sesión 1, Primera conversación.";
-  }
-
-  if (!sess.session2Completed) {
-    return "Tu siguiente paso: Sesión 2, Nivel Cero, Singular y Plural.";
-  }
-
-  if (!sess.session3Completed) {
-    return "Tu siguiente paso: Sesión 3, El Filtro Maestro R.O.D.";
-  }
-
-  if (!sess.session4Completed) {
-    return "Tu siguiente paso: Sesión 4, Presente Simple vs Continuo.";
-  }
-
-  return "Curso al día. Puedes repasar cualquier sesión o practicar speaking.";
-}
-
-/* Continuar ya NO reinicia el onboarding: te lleva a tu punto actual */
-function enterOnboarding() {
-  var s = (typeof appState !== "undefined") ? appState : {};
-
-  if (s.mission1Completed || s.onboardingCompleted) {
-    if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
-      renderSessionsPanel(ensureOnboardingScreen());
-      return;
-    }
-  }
-
-  renderOnboardingStep("nickname");
-}
-
-/* Voz en cola: habla DESPUÉS del saludo de encendido, sin cancelarlo */
-function aurixSpeakQueued(text) {
-  if (!("speechSynthesis" in window)) {
-    return;
-  }
-
-  if (window.AurixTTS && window.AurixTTS.settings && !window.AurixTTS.settings.enabled) {
-    return;
-  }
-
-  var u = new SpeechSynthesisUtterance(text);
-  u.lang = "es-MX";
-  u.rate = 1;
-  u.pitch = 0.95;
-  speechSynthesis.speak(u);
-}
-
-(function () {
-  if (window.__aurixResumeInjected) {
-    return;
-  }
-
-  window.__aurixResumeInjected = true;
-
-  function watchOverlay() {
-    var overlay = document.getElementById("aurixOffOverlay");
-
-    if (!overlay) {
-      setTimeout(watchOverlay, 800);
-      return;
-    }
-
-    var wasHidden = overlay.classList.contains("hidden");
-
-    var obs = new MutationObserver(function () {
-      var isHidden = overlay.classList.contains("hidden");
-
-      /* El overlay se ocultó = AURIX se encendió */
-      if (!wasHidden && isHidden) {
-        setTimeout(function () {
-          aurixSpeakQueued(aurixNextStepInfo());
-        }, 400);
-      }
-
-      wasHidden = isHidden;
-    });
-
-    obs.observe(overlay, { attributes: true, attributeFilter: ["class"] });
-  }
-
-  watchOverlay();
-})();
-
-/* ============================================
    ANDROID MIC FIX + DIAGNOSTICO VISIBLE
 ============================================ */
 
@@ -5040,3 +4942,899 @@ function aurixSpeakQueued(text) {
   }
 })();
 
+
+/* ============================================
+   REGRESO INTELIGENTE: SIN INTRO + BIENVENIDA
+============================================ */
+
+function aurixIsReturningUser() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  return Boolean(
+    s.onboardingCompleted ||
+    s.mission1Completed ||
+    (s.nickname && String(s.nickname).length > 0)
+  );
+}
+
+function aurixNextLessonPreview() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+  var sess = s.sessions || {};
+
+  if (!s.mission1Completed) {
+    return {
+      title: "Sesión 1",
+      preview: "Tu primera conversación: saludos y presentación en inglés."
+    };
+  }
+
+  if (!sess.session2Completed) {
+    return {
+      title: "Sesión 2",
+      preview: "Nivel Cero: uno = singular, varios = plural. House y Houses, car y cars."
+    };
+  }
+
+  if (!sess.session3Completed) {
+    return {
+      title: "Sesión 3",
+      preview: "Filtro Maestro R.O.D.: I usa AM; You, We, They usan ARE; He, She, It usan IS."
+    };
+  }
+
+  if (!sess.session4Completed) {
+    return {
+      title: "Sesión 4",
+      preview: "Presente Simple vs Continuo: sin -ING ser o estar básico; con -ING estar más ando o endo."
+    };
+  }
+
+  return {
+    title: "Repaso",
+    preview: "Practica speaking y rompe tus récords de acento."
+  };
+}
+
+function showWelcomeBanner(name, last, next) {
+  var b = document.getElementById("aurixWelcomeBanner");
+
+  if (!b) {
+    b = document.createElement("div");
+    b.id = "aurixWelcomeBanner";
+    b.className = "wb-banner";
+    document.body.appendChild(b);
+  }
+
+  b.innerHTML =
+    '<div class="wb-title">✦ Hola de nuevo, ' + name + '</div>' +
+    '<div class="wb-line">Última actividad: ' + last + '</div>' +
+    '<div class="wb-line wb-next">Siguiente lección: ' + next.title + '. ' + next.preview + '</div>';
+
+  b.classList.add("show");
+
+  clearTimeout(b._t);
+
+  b._t = setTimeout(function () {
+    b.classList.remove("show");
+  }, 9000);
+}
+
+function aurixWelcomeBack() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  var name = s.nickname || "explorador";
+  var last = s.lastInteraction || "sin actividad previa";
+  var next = aurixNextLessonPreview();
+
+  showWelcomeBanner(name, last, next);
+
+  if (typeof aurixSpeakQueued === "function") {
+    aurixSpeakQueued(
+      "Bienvenido de nuevo, " + name + ". " +
+      "Tu última actividad: " + last + ". " +
+      "Siguiente lección: " + next.title + ". " + next.preview
+    );
+  }
+}
+
+/* Sin intro para quien regresa: directo al punto */
+async function startSplashSequence() {
+  if (aurixIsReturningUser()) {
+    showScreen(document.getElementById("splash3"));
+    return;
+  }
+
+  showScreen(splash1);
+  await speakOrWait("¿Y si aprender inglés fuera más fácil?", 3500);
+
+  showScreen(splash2);
+  await speakOrWait("¿Y si el curso se adaptara a ti... y no tú a él?", 4000);
+
+  showScreen(splash3);
+  await speakOrWait("Toca el punto para iniciar la secuencia.", 2500);
+}
+
+/* Activación con voz asegurada */
+async function startActivation() {
+  if (typeof ensureTTS === "function") {
+    await ensureTTS();
+  }
+
+  if (window.AurixTTS) {
+    window.AurixTTS.setEnabled(true);
+    await window.AurixTTS.speakRichText("Iniciando sistema.", "narrator");
+  }
+
+  showScreen(activation);
+
+  var progress = 0;
+  var progressFill = document.getElementById("progressFill");
+
+  var interval = setInterval(function () {
+    progress = progress + 4;
+
+    if (progress > 100) {
+      progress = 100;
+    }
+
+    if (progressFill) {
+      progressFill.style.width = progress + "%";
+    }
+
+    if (progress === 100) {
+      clearInterval(interval);
+      finishActivation();
+    }
+  }, 80);
+}
+
+/* Al continuar: panel + bienvenida personalizada */
+function enterOnboarding() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  if (s.mission1Completed || s.onboardingCompleted) {
+    if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
+      renderSessionsPanel(ensureOnboardingScreen());
+      aurixWelcomeBack();
+      return;
+    }
+  }
+
+  renderOnboardingStep("nickname");
+}
+
+/* Ruta inicial: quien regresa cae directo en el punto */
+(function () {
+  if (window.__aurixSkipIntroInjected) {
+    return;
+  }
+
+  window.__aurixSkipIntroInjected = true;
+
+  setTimeout(function () {
+    if (aurixIsReturningUser()) {
+      var dotScreen = document.getElementById("splash3");
+
+      if (dotScreen && typeof showScreen === "function") {
+        showScreen(dotScreen);
+      }
+    }
+  }, 60);
+})();
+
+/* ============================================
+   BOTON RESET TOTAL (DENTRO DEL PANEL)
+============================================ */
+
+(function () {
+  if (window.__aurixResetBtnInjected) {
+    return;
+  }
+
+  window.__aurixResetBtnInjected = true;
+
+  function addResetButton() {
+    var panel = document.getElementById("aurix-settings");
+
+    if (!panel) {
+      setTimeout(addResetButton, 800);
+      return;
+    }
+
+    if (document.getElementById("aurixResetBtn")) {
+      return;
+    }
+
+    var wrap = document.createElement("div");
+    wrap.className = "aurix-setting";
+
+    wrap.innerHTML =
+      '<button id="aurixResetBtn" type="button" class="aurix-small-btn" ' +
+      'style="width:100%;background:rgba(255,70,70,.12);border:1px solid rgba(255,70,70,.35);color:#ff96a6;">' +
+      '🔄 Reiniciar experiencia (borra todo)</button>';
+
+    panel.appendChild(wrap);
+
+    document.getElementById("aurixResetBtn").addEventListener("click", function () {
+      if (confirm("¿Borrar todo el progreso y reiniciar la experiencia desde cero?")) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+  }
+
+  addResetButton();
+})();
+
+/* ============================================
+   SESION 4: PRESENTE SIMPLE VS CONTINUO
+============================================ */
+
+function ssSession4Done() {
+  var s = ssGetSessions();
+  return Boolean(s.session4Completed);
+}
+
+function s4Norm(t) {
+  return String(t || "")
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[.,!?]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+var S4_GERUND = [
+  { v: "work", a: "working" },
+  { v: "write", a: "writing" },
+  { v: "run", a: "running" },
+  { v: "study", a: "studying" },
+  { v: "swim", a: "swimming" }
+];
+
+var S4_CONT = [
+  { es: "Estoy corriendo.", en: ["i am running", "i'm running"] },
+  { es: "Estás bailando.", en: ["you are dancing", "you're dancing"] },
+  { es: "Él está escribiendo.", en: ["he is writing", "he's writing"] },
+  { es: "Ella está leyendo.", en: ["she is reading", "she's reading"] },
+  { es: "Nosotros estamos comiendo.", en: ["we are eating", "we're eating"] },
+  { es: "Ustedes están cantando.", en: ["you are singing", "you're singing"] },
+  { es: "Ellos están durmiendo.", en: ["they are sleeping", "they're sleeping"] },
+  { es: "Estoy pensando.", en: ["i am thinking", "i'm thinking"] },
+  { es: "Estás intentando.", en: ["you are trying", "you're trying"] },
+  { es: "Él está esperando.", en: ["he is waiting", "he's waiting"] }
+];
+
+var S4_SIMPLE = [
+  { es: "Corro.", en: ["i run"] },
+  { es: "Bailas.", en: ["you dance"] },
+  { es: "Él escribe.", en: ["he writes"] },
+  { es: "Ella lee.", en: ["she reads"] },
+  { es: "Nosotros comemos.", en: ["we eat"] },
+  { es: "Ustedes cantan.", en: ["you sing"] },
+  { es: "Ellos duermen.", en: ["they sleep"] },
+  { es: "Pienso.", en: ["i think"] },
+  { es: "Intentas.", en: ["you try"] },
+  { es: "Él espera.", en: ["he waits"] }
+];
+
+/* ---------- INTRO ---------- */
+function renderSession4Intro(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 4</div>' +
+      '<h2 class="ob-title">Presente Simple vs Continuo</h2>' +
+      '<p class="ob-sub">Dos tiempos, una Regla de Oro. Sin -ING = ser o estar básico. Con -ING = estar + ando o endo.</p>' +
+      '<div class="ob-actions"><button id="s4Start" class="btn">Comenzar</button></div>' +
+    '</div>';
+
+  document.getElementById("s4Start").onclick = function () {
+    renderSession4Rule(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión cuatro. Presente simple versus presente continuo. Regla de oro: sin ing, ser o estar básico. Con ing, estar más ando o endo.", "narrator");
+  }
+}
+
+/* ---------- REGLA DE ORO + PUENTE R.O.D. ---------- */
+function renderSession4Rule(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">PUENTE R.O.D.</div>' +
+      '<h2 class="ob-title">La Regla de Oro</h2>' +
+      '<div class="s4-rule"><b>Canal 1 — 1ª persona:</b> ' + ssDisplayEn("I") + ' → ' + ssDisplayEn("AM") + '</div>' +
+      '<div class="s4-rule"><b>Canal 2 — 2ªs personas:</b> ' + ssDisplayEn("You, We, They") + ' → ' + ssDisplayEn("ARE") + '</div>' +
+      '<div class="s4-rule"><b>Canal 3 — 3ªs personas:</b> ' + ssDisplayEn("He, She, It") + ' → ' + ssDisplayEn("IS") + '</div>' +
+      '<div class="s4-rule"><b>SIN -ING</b> = Ser/Estar básico (Simple).<br>' + ssDisplayEn("It is a house.") + ' = Es una casa.</div>' +
+      '<div class="s4-rule"><b>CON -ING</b> = Estar + Ando/Endo (Continuo).<br>' + ssDisplayEn("I am working.") + ' = Estoy trabajando.</div>' +
+      '<div class="ob-actions"><button id="s4RuleNext" class="btn">Continuar</button></div>' +
+    '</div>';
+
+  document.getElementById("s4RuleNext").onclick = function () {
+    renderSession4Gerund(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Recuerda el filtro. Primera persona usa am. Segundas personas usan are. Terceras personas usan is. Sin ing, ser o estar básico. Con ing, estar más ando o endo.", "narrator");
+  }
+}
+
+/* ---------- GERUNDIO ---------- */
+function renderSession4Gerund(container) {
+  var rows = "";
+
+  S4_GERUND.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + ssDisplayEn(item.v) + ' → ?</div>' +
+        '<input id="s4g' + i + '" class="s4-input" type="text" placeholder="Escribe el gerundio...">' +
+        '<div id="s4gf' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">MORFOLOGÍA</div>' +
+      '<h2 class="ob-title">El Gerundio (-ING)</h2>' +
+      '<div class="s4-rule"><b>Regla general:</b> + ING → work → working</div>' +
+      '<div class="s4-rule"><b>Termina en -E muda:</b> quita la E + ING → write → writing</div>' +
+      '<div class="s4-rule"><b>Monosílabo C-V-C:</b> duplica consonante + ING → run → running</div>' +
+      '<div class="s4-rule"><b>Consonante + Y:</b> solo + ING (sin cambios) → study → studying</div>' +
+      rows +
+      '<div id="s4GerundScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s4GerundCheck" class="btn">Revisar</button>' +
+        '<button id="s4GerundNext" class="btn" disabled>Continuar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s4GerundCheck").onclick = function () {
+    var score = 0;
+
+    S4_GERUND.forEach(function (item, i) {
+      var inp = document.getElementById("s4g" + i);
+      var fb = document.getElementById("s4gf" + i);
+      var ok = s4Norm(inp.value) === item.a;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.a;
+    });
+
+    document.getElementById("s4GerundScore").textContent =
+      "Resultado: " + score + "/" + S4_GERUND.length;
+
+    document.getElementById("s4GerundNext").disabled = false;
+  };
+
+  document.getElementById("s4GerundNext").onclick = function () {
+    renderSession4Contrast(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("El gerundio en inglés equivale a ando y endo en español. Aplica las cuatro reglas y escribe el gerundio de cada verbo.", "narrator");
+  }
+}
+
+/* ---------- CONTRASTE + 3ª PERSONA ---------- */
+function renderSession4Contrast(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">CONTRASTE</div>' +
+      '<h2 class="ob-title">Simple vs Continuo</h2>' +
+      '<div class="s4-rule"><b>SIMPLE:</b> Sujeto + am/is/are + complemento. <b>NO lleva -ING.</b><br>' + ssDisplayEn("It is a house.") + '</div>' +
+      '<div class="s4-rule"><b>CONTINUO:</b> Sujeto + am/is/are + verbo-ING. <b>SÍ lleva -ING.</b><br>' + ssDisplayEn("I am working.") + '</div>' +
+      '<div class="s4-rule"><b>3ª persona del SIMPLE:</b><br>• General: + S → He runs.<br>• Termina en O, X, S, SH, Z: + ES → He goes.<br>• Consonante + Y: Y → IES → He tries.<br>• have → has.</div>' +
+      '<div class="s4-rule"><b>Regla clave:</b> en inglés el pronombre NUNCA se omite. Siempre debe estar escrito.</div>' +
+      '<div class="ob-actions"><button id="s4ContrastNext" class="btn">Ir a ejercicios</button></div>' +
+    '</div>';
+
+  document.getElementById("s4ContrastNext").onclick = function () {
+    renderSession4ExerciseA(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("En el tiempo simple no hay gerundio. En el continuo, el gerundio es obligatorio. Y recuerda: en inglés el pronombre nunca se omite.", "narrator");
+  }
+}
+
+/* ---------- EJERCICIO A: CONTINUO ---------- */
+function renderSession4ExerciseA(container) {
+  var rows = "";
+
+  S4_CONT.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s4a' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+        '<div id="s4af' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">EJERCICIO A</div>' +
+      '<h2 class="ob-title">Presente Continuo</h2>' +
+      '<p class="ob-sub">Traduce usando am/is/are + verbo con -ING.</p>' +
+      rows +
+      '<div id="s4ScoreA" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s4CheckA" class="btn">Revisar</button>' +
+        '<button id="s4NextA" class="btn" disabled>Continuar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s4CheckA").onclick = function () {
+    var score = 0;
+
+    S4_CONT.forEach(function (item, i) {
+      var inp = document.getElementById("s4a" + i);
+      var fb = document.getElementById("s4af" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s4ScoreA = score;
+
+    document.getElementById("s4ScoreA").textContent =
+      "Resultado: " + score + "/" + S4_CONT.length;
+
+    document.getElementById("s4NextA").disabled = false;
+  };
+
+  document.getElementById("s4NextA").onclick = function () {
+    renderSession4ExerciseB(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Ejercicio A. Traduce al presente continuo. Usa el verbo to be más el gerundio.", "narrator");
+  }
+}
+
+/* ---------- EJERCICIO B: SIMPLE ---------- */
+function renderSession4ExerciseB(container) {
+  var rows = "";
+
+  S4_SIMPLE.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s4b' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés (no olvides el pronombre)...">' +
+        '<div id="s4bf' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">EJERCICIO B</div>' +
+      '<h2 class="ob-title">Presente Simple</h2>' +
+      '<p class="ob-sub">Traduce sin -ING. Cuidado con la 3ª persona y el pronombre obligatorio.</p>' +
+      rows +
+      '<div id="s4ScoreB" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s4CheckB" class="btn">Revisar</button>' +
+        '<button id="s4NextB" class="btn" disabled>Completar sesión</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s4CheckB").onclick = function () {
+    var score = 0;
+
+    S4_SIMPLE.forEach(function (item, i) {
+      var inp = document.getElementById("s4b" + i);
+      var fb = document.getElementById("s4bf" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s4ScoreB = score;
+
+    document.getElementById("s4ScoreB").textContent =
+      "Resultado: " + score + "/" + S4_SIMPLE.length;
+
+    document.getElementById("s4NextB").disabled = false;
+  };
+
+  document.getElementById("s4NextB").onclick = function () {
+    renderSession4Complete(container, window.__s4ScoreA || 0, window.__s4ScoreB || 0);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Ejercicio B. Traduce al presente simple. Sin gerundio. Y recuerda: el pronombre siempre se escribe.", "narrator");
+  }
+}
+
+/* ---------- COMPLETAR ---------- */
+function renderSession4Complete(container, a, b) {
+  var s = ssGetSessions();
+
+  s.session4Completed = true;
+  s.session4Score = (a || 0) + (b || 0);
+
+  if (typeof appState !== "undefined") {
+    appState.lastInteraction = "Sesión 4: Presente Simple vs Continuo";
+  }
+
+  ssSave();
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 4</div>' +
+      '<h2 class="ob-title">Sesión 4 completada</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Continuo</div><div class="mp-profile-value">' + a + '/10</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Simple</div><div class="mp-profile-value">' + b + '/10</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Total</div><div class="mp-profile-value">' + ((a || 0) + (b || 0)) + '/20</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Dominaste la Regla de Oro: sin -ING ser/estar básico, con -ING estar + ando/endo.</p>' +
+      '<div class="ob-actions"><button id="s4Back" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("s4Back").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión cuatro completada. Dominaste la diferencia entre simple y continuo. " + ssEnQuote("Excellent work."), "narrator");
+  }
+}
+
+/* ---------- PANEL ACTUALIZADO (4 SESIONES) ---------- */
+function renderSessionsPanel(container) {
+  var s1 = ssSession1Done();
+  var s2 = ssSession2Done();
+  var s3 = ssSession3Done();
+  var s4 = ssSession4Done();
+
+  var completedCount = 0;
+  if (s1) completedCount++;
+  if (s2) completedCount++;
+  if (s3) completedCount++;
+  if (s4) completedCount++;
+
+  var progress = Math.round((completedCount / 4) * 100);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">AURIX OS</div>' +
+      '<h2 class="ob-title">Panel de sesiones</h2>' +
+      '<p class="ob-sub">Tu progreso en el método gramatical puro.</p>' +
+      '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
+      '<p class="ss-status">Progreso: ' + completedCount + '/4 sesiones</p>' +
+      '<div class="ss-grid">' +
+        '<div class="ss-card ' + (s1 ? "completed" : "available") + '">' +
+          '<span class="ss-badge ' + (s1 ? "done" : "next") + '">Sesión 1</span>' +
+          '<div class="ss-title">Primera conversación</div>' +
+          '<div class="ss-status">' + (s1 ? "Completada" : "Disponible") + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s2 ? "completed" : (s1 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s2 ? "done" : (s1 ? "next" : "locked")) + '">Sesión 2</span>' +
+          '<div class="ss-title">Nivel Cero: Singular y Plural</div>' +
+          '<div class="ss-status">' + (s2 ? "Completada" : (s1 ? "Disponible" : "Bloqueada") ) + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s3 ? "completed" : (s2 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s3 ? "done" : (s2 ? "next" : "locked")) + '">Sesión 3</span>' +
+          '<div class="ss-title">Filtro Maestro R.O.D.</div>' +
+          '<div class="ss-status">' + (s3 ? "Completada" : (s2 ? "Disponible" : "Bloqueada") ) + '</div>' +
+        '</div>' +
+        '<div class="ss-card ' + (s4 ? "completed" : (s3 ? "available" : "locked")) + '">' +
+          '<span class="ss-badge ' + (s4 ? "done" : (s3 ? "next" : "locked")) + '">Sesión 4</span>' +
+          '<div class="ss-title">Presente Simple vs Continuo</div>' +
+          '<div class="ss-status">' + (s4 ? "Completada" : (s3 ? "Disponible" : "Bloqueada") ) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ss-actions">' +
+        '<button id="ssSession1Btn" class="ob-small-btn">' + (s1 ? "Repetir S1" : "Iniciar S1") + '</button>' +
+        '<button id="ssSession2Btn" class="ob-small-btn" ' + (s1 ? "" : "disabled") + '>' + (s2 ? "Repetir S2" : "Iniciar S2") + '</button>' +
+        '<button id="ssSession3Btn" class="ob-small-btn" ' + (s2 ? "" : "disabled") + '>' + (s3 ? "Repetir S3" : "Iniciar S3") + '</button>' +
+        '<button id="ssSession4Btn" class="btn" ' + (s3 ? "" : "disabled") + '>' + (s4 ? "Repetir S4" : "Continuar: Sesión 4") + '</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("ssSession1Btn").onclick = function () {
+    if (typeof renderMissionProfileName === "function") renderMissionProfileName(container);
+  };
+
+  document.getElementById("ssSession2Btn").onclick = function () {
+    if (s1 && typeof renderSession2Intro === "function") renderSession2Intro(container);
+  };
+
+  document.getElementById("ssSession3Btn").onclick = function () {
+    if (s2 && typeof renderSession3Intro === "function") renderSession3Intro(container);
+  };
+
+  document.getElementById("ssSession4Btn").onclick = function () {
+    if (s3) renderSession4Intro(container);
+  };
+
+  ssSpeak("Panel de sesiones. Progreso actual: " + completedCount + " de 4.", "narrator");
+}
+
+/* ============================================
+   MIC SETUP OBLIGATORIO (LOGICA)
+============================================ */
+
+(function () {
+  if (window.__aurixMicSetupInjected) {
+    return;
+  }
+
+  window.__aurixMicSetupInjected = true;
+
+  var SETUP_KEY = "aurix_mic_setup_done";
+
+  var testStream = null;
+  var testCtx = null;
+  var testRaf = null;
+  var testRec = null;
+  var voiceDetected = false;
+
+  function setupDone() {
+    return localStorage.getItem(SETUP_KEY) === "true";
+  }
+
+  function markDone() {
+    localStorage.setItem(SETUP_KEY, "true");
+  }
+
+  function injectUI() {
+    if (document.getElementById("micSetupOverlay")) {
+      return;
+    }
+
+    var overlay = document.createElement("div");
+    overlay.id = "micSetupOverlay";
+    overlay.className = "ms-overlay hidden";
+
+    overlay.innerHTML =
+      '<div class="ms-card">' +
+        '<div class="ms-title">🎙 Configura tu micrófono</div>' +
+        '<div class="ms-sub">El micrófono es pieza clave de AURIX. Configúralo una sola vez.</div>' +
+        '<div class="ms-steps">' +
+          '<div class="ms-step">1. Toca <b>Probar micrófono</b> (o el 🎤 de abajo) y acepta el permiso.</div>' +
+          '<div class="ms-step">2. Habla: las barras deben moverse.</div>' +
+          '<div class="ms-step">3. Toca <b>Micrófono listo</b>.</div>' +
+        '</div>' +
+        '<div class="ms-bars" id="msBars">' +
+          '<span></span><span></span><span></span><span></span><span></span><span></span><span></span>' +
+        '</div>' +
+        '<div class="ms-status" id="msStatus">Esperando prueba...</div>' +
+        '<div class="ms-actions">' +
+          '<button id="msTestBtn" class="btn">🎤 Probar micrófono</button>' +
+          '<button id="msReadyBtn" class="btn" disabled>✔ Micrófono listo</button>' +
+        '</div>' +
+        '<div class="ms-skip" id="msSkip">Omitir por ahora</div>' +
+      '</div>' +
+      '<div class="ms-arrow">▼<span>tu micrófono vive aquí</span></div>';
+
+    document.body.appendChild(overlay);
+
+    document.getElementById("msTestBtn").addEventListener("click", runTest);
+    document.getElementById("msReadyBtn").addEventListener("click", finishSetup);
+    document.getElementById("msSkip").addEventListener("click", hideOverlay);
+  }
+
+  function showOverlay() {
+    injectUI();
+    var o = document.getElementById("micSetupOverlay");
+    if (o) {
+      o.classList.remove("hidden");
+    }
+    checkPermissionState();
+  }
+
+  function hideOverlay() {
+    stopTest();
+    var o = document.getElementById("micSetupOverlay");
+    if (o) {
+      o.classList.add("hidden");
+    }
+  }
+
+  function setStatus(text, cls) {
+    var st = document.getElementById("msStatus");
+    if (!st) {
+      return;
+    }
+    st.textContent = text;
+    st.className = "ms-status" + (cls ? " " + cls : "");
+  }
+
+  function checkPermissionState() {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: "microphone" }).then(function (p) {
+        if (p.state === "denied") {
+          setStatus("Permiso bloqueado. Toca el candado de la URL → Permisos → Micrófono → Permitir, y vuelve a probar.", "ms-bad");
+        } else if (p.state === "granted") {
+          setStatus("Permiso concedido. Pulsa Probar micrófono para verificar.", "ms-ok");
+        }
+      }).catch(function () {
+        // Ignorar.
+      });
+    }
+  }
+
+  function runTest() {
+    stopTest();
+    voiceDetected = false;
+
+    var ready = document.getElementById("msReadyBtn");
+    if (ready) {
+      ready.disabled = true;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus("Este navegador no soporta micrófono. Usa https (Vercel) o localhost.", "ms-bad");
+      return;
+    }
+
+    setStatus("Solicitando permiso de micrófono...");
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+      testStream = stream;
+
+      var AC = window.AudioContext || window.webkitAudioContext;
+      testCtx = new AC();
+
+      var src = testCtx.createMediaStreamSource(stream);
+      var an = testCtx.createAnalyser();
+      an.fftSize = 256;
+      src.connect(an);
+
+      var data = new Uint8Array(an.fftSize);
+      var bars = document.querySelectorAll("#msBars span");
+
+      setStatus("Permiso OK. Habla ahora... las barras deben moverse.");
+
+      function tick() {
+        an.getByteFrequencyData(data);
+
+        var sum = 0;
+        for (var i = 0; i < data.length; i++) {
+          sum += data[i];
+        }
+        var avg = sum / data.length;
+
+        bars.forEach(function (b, i) {
+          var h = Math.max(8, Math.min(100, avg * (1 + i * 0.1) * 2.4));
+          b.style.height = h + "%";
+        });
+
+        if (avg > 12 && !voiceDetected) {
+          voiceDetected = true;
+          setStatus("✔ Voz detectada. Tu micrófono funciona.", "ms-ok");
+          if (ready) {
+            ready.disabled = false;
+          }
+        }
+
+        testRaf = requestAnimationFrame(tick);
+      }
+
+      tick();
+
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (SR) {
+        try {
+          testRec = new SR();
+          testRec.lang = "en-US";
+
+          testRec.onresult = function () {
+            if (!voiceDetected) {
+              voiceDetected = true;
+              setStatus("✔ Voz detectada y reconocimiento activo.", "ms-ok");
+              if (ready) {
+                ready.disabled = false;
+              }
+            }
+          };
+
+          testRec.onerror = function (e) {
+            setStatus("Diagnóstico reconocimiento: " + e.error + " (el mic puede funcionar aunque el reconocimiento falle).", "ms-warn");
+          };
+
+          testRec.start();
+        } catch (e) {
+          // Ignorar.
+        }
+      }
+    }).catch(function (err) {
+      var msgs = {
+        "NotAllowedError": "Permiso denegado. Actívalo en el candado o ajustes del sitio.",
+        "PermissionDeniedError": "Permiso denegado. Actívalo en el candado o ajustes del sitio.",
+        "NotFoundError": "No se detecta ningún micrófono en este dispositivo.",
+        "NotReadableError": "El micrófono está ocupado por otra aplicación.",
+        "SecurityError": "Contexto no seguro: abre la app en https (Vercel) o localhost, nunca en file://."
+      };
+
+      setStatus(msgs[err.name] || ("Error: " + err.name), "ms-bad");
+    });
+  }
+
+  function stopTest() {
+    if (testRaf) {
+      cancelAnimationFrame(testRaf);
+    }
+    testRaf = null;
+
+    if (testRec) {
+      try {
+        testRec.onresult = null;
+        testRec.onerror = null;
+        testRec.abort();
+      } catch (e) {
+        // Ignorar.
+      }
+      testRec = null;
+    }
+
+    if (testStream) {
+      testStream.getTracks().forEach(function (t) {
+        t.stop();
+      });
+      testStream = null;
+    }
+
+    if (testCtx) {
+      try {
+        testCtx.close();
+      } catch (e) {
+        // Ignorar.
+      }
+      testCtx = null;
+    }
+
+    document.querySelectorAll("#msBars span").forEach(function (b) {
+      b.style.height = "8%";
+    });
+  }
+
+  function finishSetup() {
+    stopTest();
+    markDone();
+    hideOverlay();
+
+    if (typeof aurixSpeakQueued === "function") {
+      aurixSpeakQueued("Micrófono configurado correctamente. Ya puedes practicar tu acento.");
+    }
+  }
+
+  /* Auto-configurar si el usuario ya practico con exito en el modal */
+  setInterval(function () {
+    var v = document.getElementById("micScoreValue");
+
+    if (v && parseInt(v.textContent, 10) > 0 && !setupDone()) {
+      markDone();
+      hideOverlay();
+    }
+  }, 1500);
+
+  /* Mostrar el setup en la pantalla de inicio si falta configuracion */
+  setInterval(function () {
+    var s3 = document.getElementById("splash3");
+
+    if (s3 && s3.classList.contains("active") && !setupDone()) {
+      var o = document.getElementById("micSetupOverlay");
+
+      if (!o || o.classList.contains("hidden")) {
+        showOverlay();
+      }
+    }
+  }, 600);
+})();
