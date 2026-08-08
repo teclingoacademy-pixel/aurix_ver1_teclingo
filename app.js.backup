@@ -305,7 +305,11 @@ function renderNickname(container) {
       '<input id="obNickname" class="ob-input" type="text" placeholder="Ej: Fer, Alex, Ana" maxlength="24" value="' + escapeHtml(appState.nickname || "") + '" />' +
       '<div class="ob-actions">' +
         '<button id="obNicknameNext" class="btn">Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   const input = document.getElementById("obNickname");
@@ -363,7 +367,11 @@ function renderGoal(container) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="obGoalNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   let selectedGoal = null;
@@ -423,7 +431,11 @@ function renderFastTrackWarning(container) {
       '<p class="ob-sub">Intenta ser honesto. Si respondes muy alto, el contenido puede ser difícil. Si respondes muy bajo, puede ser aburrido.</p>' +
       '<div class="ob-actions">' +
         '<button id="obFastTrackNext" class="btn">Comenzar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   const nextBtn = document.getElementById("obFastTrackNext");
@@ -485,7 +497,11 @@ function renderLevel(container) {
       }).join("") +
       '<div class="ob-actions">' +
         '<button id="obLevelNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   let selectedLevel = null;
@@ -565,7 +581,11 @@ function renderSkills(container) {
       '<p class="ob-sub">Califica del 1 al 10. Esto ayuda a AURIX a apoyar tus habilidades débiles.</p>' +
       '<div class="ob-actions">' +
         '<button id="obReadQuestions" class="ob-small-btn">Leer preguntas</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       skills.map(function (skill) {
         const value = appState.skills[skill.key] || 5;
 
@@ -581,7 +601,11 @@ function renderSkills(container) {
       }).join("") +
       '<div class="ob-actions">' +
         '<button id="obSkillsNext" class="btn">Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   skills.forEach(function (skill) {
@@ -650,7 +674,11 @@ function renderTime(container) {
       '<div id="obTimeWarning" class="ob-warning hidden"></div>' +
       '<div class="ob-actions">' +
         '<button id="obTimeNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   let selectedMinutes = null;
@@ -728,7 +756,11 @@ function renderRoute(container) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="obRouteNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   let selectedRoute = null;
@@ -848,7 +880,11 @@ function renderWelcome(container) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="obStartJourney" class="btn">Comenzar mi viaje</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("obStartJourney").addEventListener("click", async function () {
@@ -893,7 +929,11 @@ function renderMissionIntro(container) {
       <p class="ob-sub">AURIX quiere saludarte y enseñarte a presentarte en inglés.</p>
       <div class="ob-actions">
         <button id="missionIntroBtn" class="btn">Comenzar</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -926,7 +966,11 @@ function renderMissionGreeting(container) {
 
       <div class="ob-actions">
         <button id="missionGreetingNext" class="btn">Continuar</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -965,7 +1009,11 @@ function renderMissionPractice(container) {
 
       <div class="ob-actions">
         <button id="missionIntroduceBtn" class="btn">Presentarse</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -1085,7 +1133,11 @@ function renderMissionResponse(container, name) {
 
       <div class="ob-actions">
         <button id="missionResponseNext" class="btn">Continuar</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -1132,7 +1184,11 @@ function renderMissionComplete(container) {
 
       <div class="ob-actions">
         <button id="missionCompleteNext" class="btn">Ir al panel</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -1200,17 +1256,16 @@ function renderMissionDashboard(container) {
       <div class="ob-actions">
         <button id="missionRepeatBtn" class="ob-small-btn">Repetir primera misión</button>
         <button id="missionRestartBtn" class="btn">Reiniciar experiencia</button>
-        <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">💬 Conversación Libre</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
   document.getElementById("missionRepeatBtn").addEventListener("click", function () {
     renderMissionIntro(container);
-  });
-
-  document.getElementById("missionChatBtn").addEventListener("click", function () {
-    window.open("https://teclingo-chat.vercel.app/", "_blank");
   });
 
   document.getElementById("missionRestartBtn").addEventListener("click", async function () {
@@ -1221,6 +1276,12 @@ function renderMissionDashboard(container) {
     await wait(700);
     location.reload();
   });
+  
+  document.getElementById("missionChatBtn").addEventListener("click", function () {
+    window.open("https://teclingo-chat.vercel.app/", "_blank");
+  });
+
+  
 
   if (window.AurixTTS) {
     window.AurixTTS.speakRichText(
@@ -1255,7 +1316,11 @@ function renderMissionTeach(container) {
 
       <div class="ob-actions">
         <button id="missionListenAll" class="ob-small-btn">Escuchar todo</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
 
       <div class="mi-phrases">
         ${phrases.map(function (phrase) {
@@ -1273,7 +1338,11 @@ function renderMissionTeach(container) {
 
       <div class="ob-actions">
         <button id="missionTeachNext" class="btn">Continuar</button>
-      </div>
+      
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>
     </div>
   `;
 
@@ -1649,41 +1718,6 @@ startExperience();
 })();
 
 /* ============================================
-   AURIX FREE CHAT BUTTON (teclingo-chat)
-============================================ */
-
-(function () {
-  function injectChatButton() {
-    if (document.getElementById("aurixChatBtn")) {
-      return;
-    }
-
-    var btn = document.createElement("button");
-    btn.id = "aurixChatBtn";
-    btn.type = "button";
-    btn.className = "aurix-chat-btn";
-    btn.setAttribute("aria-label", "Abrir Conversación Libre");
-    btn.title = "Conversación Libre";
-
-    btn.innerHTML =
-      '<span class="aurix-chat-icon">💬</span>' +
-      '<span class="aurix-chat-text">Chat Libre</span>';
-
-    btn.addEventListener("click", function () {
-      window.open("https://teclingo-chat.vercel.app/", "_blank");
-    });
-
-    document.body.appendChild(btn);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", injectChatButton);
-  } else {
-    injectChatButton();
-  }
-})();
-
-/* ============================================
    EXTENDED FIRST CONVERSATION LOGIC
 ============================================ */
 
@@ -1808,7 +1842,11 @@ function renderMissionProfileName(container) {
       '<input id="mpNameInput" class="ob-input" type="text" maxlength="24" placeholder="Tu nombre o nickname" value="' + (name || "") + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpNameNext" class="btn">Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   var input = document.getElementById("mpNameInput");
@@ -1863,7 +1901,11 @@ function renderMissionProfileAge(container) {
       '<input id="mpAgeInput" class="ob-input mp-input" type="number" min="5" max="100" placeholder="O escribe tu edad" value="' + (age || "") + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpAgeNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   var input = document.getElementById("mpAgeInput");
@@ -1931,7 +1973,11 @@ function renderMissionProfileFrom(container) {
       '<input id="mpFromInput" class="ob-input mp-input" type="text" maxlength="60" placeholder="Escribe tu ciudad o país" value="' + from + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpFromNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   var input = document.getElementById("mpFromInput");
@@ -2003,7 +2049,11 @@ function renderMissionProfileOccupation(container) {
       '<input id="mpJobInput" class="ob-input mp-input" type="text" maxlength="100" placeholder="Ej: I work as a teacher" value="' + occupation + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpJobNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   var input = document.getElementById("mpJobInput");
@@ -2081,7 +2131,11 @@ function renderMissionProfileLikes(container) {
       '<input id="mpLikeInput" class="ob-input mp-input" type="text" maxlength="100" placeholder="Ej: music, travel, coffee" value="' + likeThing + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpLikeNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   var input = document.getElementById("mpLikeInput");
@@ -2145,7 +2199,11 @@ function renderMissionFinalIntro(container) {
       '<div class="ob-actions">' +
         '<button id="mpListenFinal" class="ob-small-btn">Escuchar</button>' +
         '<button id="mpFinalNext" class="btn">Completar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("mpListenFinal").addEventListener("click", function () {
@@ -2210,7 +2268,11 @@ function renderMissionComplete(container) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="mpCompleteNext" class="btn">Ir al panel</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("mpCompleteNext").addEventListener("click", function () {
@@ -2260,7 +2322,11 @@ function renderMissionDashboard(container) {
         '<button id="mpRepeatMission" class="ob-small-btn">Repetir primera misión</button>' +
         '<button id="mpSessionsPanel" class="ob-small-btn primary">Panel de sesiones</button>' +
         '<button id="mpRestartApp" class="btn">Reiniciar experiencia</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("mpRepeatMission").addEventListener("click", function () {
@@ -2369,7 +2435,11 @@ function renderMissionDashboard(container) {
           '<button id="micRecordBtn" class="btn">🎤 Grabar</button>' +
           '<button id="micStopBtn" class="ob-small-btn" disabled>Detener</button>' +
           '<button id="micCloseBtn" class="ob-small-btn">Cerrar</button>' +
-        '</div>' +
+        '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
 
         '<p class="mp-note">' +
           'La evaluación es aproximada y se basa en la transcripción del navegador. ' +
@@ -2931,7 +3001,11 @@ function renderMissionDashboard(container) {
           '<button id="mpListenFinal" class="ob-small-btn">Escuchar</button>' +
           '<button id="mpMicIntro" class="btn">🎤 Practicar con micrófono</button>' +
           '<button id="mpFinalNext" class="btn">Completar</button>' +
-        '</div>' +
+        '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
         '<p class="mp-note">El micrófono muestra nivel de voz y una similitud aproximada de pronunciación.</p>' +
       '</div>';
 
@@ -3176,7 +3250,11 @@ function renderSession3Intro(container) {
       '<h2 class="ob-title">El Filtro Maestro R.O.D.</h2>' +
       '<p class="ob-sub">En inglés, no memorizamos combinaciones al azar. Filtramos el sujeto por su persona gramatical para encontrar el verbo exacto.</p>' +
       '<p class="ob-sub">Cero conversación de relleno. Solo gramática pura y estructural.</p>' +
-      '<div class="ob-actions"><button id="s3Start" class="btn">Iniciar Filtro</button></div>' +
+      '<div class="ob-actions"><button id="s3Start" class="btn">Iniciar Filtro</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
   
   document.getElementById("s3Start").onclick = function() { renderSession3Theory(container); };
@@ -3206,7 +3284,11 @@ function renderSession3Theory(container) {
         '</div>' +
       '</div>' +
       '<p class="ob-sub">Regla de Oro: El verbo cambia según el canal. No hay excepciones en el presente simple.</p>' +
-      '<div class="ob-actions"><button id="s3Next" class="btn">Practicar Filtro</button></div>' +
+      '<div class="ob-actions"><button id="s3Next" class="btn">Practicar Filtro</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
     
   document.getElementById("s3Next").onclick = function() { renderSession3Exercise(container, 0, 0); };
@@ -3283,7 +3365,11 @@ function renderSession3Table(container, score) {
         '<div class="mp-profile-item"><div class="mp-profile-label">2das Personas</div><div class="mp-profile-value">' + ssDisplayEn("YOU/WE/THEY ARE") + '</div></div>' +
         '<div class="mp-profile-item"><div class="mp-profile-label">3ras Personas</div><div class="mp-profile-value">' + ssDisplayEn("HE/SHE/IT IS") + '</div></div>' +
       '</div>' +
-      '<div class="ob-actions"><button id="s3Finish" class="btn">Completar Sesión 3</button></div>' +
+      '<div class="ob-actions"><button id="s3Finish" class="btn">Completar Sesión 3</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
     
   document.getElementById("s3Finish").onclick = function() { renderSession3Complete(container, score); };
@@ -3308,7 +3394,11 @@ function renderSession3Complete(container, score) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="s3Back" class="ob-small-btn">Volver al Panel</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
     
   document.getElementById("s3Back").onclick = function() { renderSessionsPanel(container); };
@@ -3384,7 +3474,11 @@ function renderSession2Intro(container) {
       '<h2 class="ob-title">Nivel Cero: Singular y Plural</h2>' +
       '<p class="ob-sub">Antes de los pronombres, el cimiento: saber si hablamos de una cosa o de muchas.</p>' +
       '<p class="ob-sub">Cero relleno. Solo estructura.</p>' +
-      '<div class="ob-actions"><button id="s2Start" class="btn">Iniciar Nivel Cero</button></div>' +
+      '<div class="ob-actions"><button id="s2Start" class="btn">Iniciar Nivel Cero</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s2Start").onclick = function() { renderSession2Theory(container); };
@@ -3403,7 +3497,11 @@ function renderSession2Theory(container) {
       '</div>' +
       '<p class="ob-sub">La <strong>-s</strong> al final indica que hay más de uno. Singular se refiere a una sola cosa; plural a varias.</p>' +
       '<p class="ob-sub">Hay irregulares como ' + ssDisplayEn("child") + ' → ' + ssDisplayEn("children") + ', que se memorizan como palabra nueva.</p>' +
-      '<div class="ob-actions"><button id="s2Next" class="btn">Practicar</button></div>' +
+      '<div class="ob-actions"><button id="s2Next" class="btn">Practicar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s2Next").onclick = function() { renderSession2Exercise(container, 0, 0); };
@@ -3470,7 +3568,11 @@ function renderSession2Table(container, score) {
         '<div class="mp-profile-item"><div class="mp-profile-label">Plural</div><div class="mp-profile-value">más de una + s</div></div>' +
         '<div class="mp-profile-item"><div class="mp-profile-label">Irregulares</div><div class="mp-profile-value">child → children</div></div>' +
       '</div>' +
-      '<div class="ob-actions"><button id="s2Finish" class="btn">Completar Sesión 2</button></div>' +
+      '<div class="ob-actions"><button id="s2Finish" class="btn">Completar Sesión 2</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s2Finish").onclick = function() { renderSession2Complete(container, score); };
@@ -3495,7 +3597,11 @@ function renderSession2Complete(container, score) {
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="s2Back" class="ob-small-btn">Volver al Panel</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s2Back").onclick = function() { renderSessionsPanel(container); };
@@ -3712,7 +3818,11 @@ function renderSession2Complete(container, score) {
         '<div class="pr-list" id="prList"></div>' +
         '<div class="ob-actions">' +
           '<button id="prClose" class="btn">Cerrar</button>' +
-        '</div>' +
+        '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
     document.body.appendChild(modal);
 
@@ -5265,7 +5375,11 @@ function renderSession4Intro(container) {
       '<div class="badge">SESIÓN 4</div>' +
       '<h2 class="ob-title">Presente Simple vs Continuo</h2>' +
       '<p class="ob-sub">Dos tiempos, una Regla de Oro. Sin -ING = ser o estar básico. Con -ING = estar + ando o endo.</p>' +
-      '<div class="ob-actions"><button id="s4Start" class="btn">Comenzar</button></div>' +
+      '<div class="ob-actions"><button id="s4Start" class="btn">Comenzar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4Start").onclick = function () {
@@ -5288,7 +5402,11 @@ function renderSession4Rule(container) {
       '<div class="s4-rule"><b>Canal 3 — 3ªs personas:</b> ' + ssDisplayEn("He, She, It") + ' → ' + ssDisplayEn("IS") + '</div>' +
       '<div class="s4-rule"><b>SIN -ING</b> = Ser/Estar básico (Simple).<br>' + ssDisplayEn("It is a house.") + ' = Es una casa.</div>' +
       '<div class="s4-rule"><b>CON -ING</b> = Estar + Ando/Endo (Continuo).<br>' + ssDisplayEn("I am working.") + ' = Estoy trabajando.</div>' +
-      '<div class="ob-actions"><button id="s4RuleNext" class="btn">Continuar</button></div>' +
+      '<div class="ob-actions"><button id="s4RuleNext" class="btn">Continuar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4RuleNext").onclick = function () {
@@ -5326,7 +5444,11 @@ function renderSession4Gerund(container) {
       '<div class="ob-actions">' +
         '<button id="s4GerundCheck" class="btn">Revisar</button>' +
         '<button id="s4GerundNext" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4GerundCheck").onclick = function () {
@@ -5369,7 +5491,11 @@ function renderSession4Contrast(container) {
       '<div class="s4-rule"><b>CONTINUO:</b> Sujeto + am/is/are + verbo-ING. <b>SÍ lleva -ING.</b><br>' + ssDisplayEn("I am working.") + '</div>' +
       '<div class="s4-rule"><b>3ª persona del SIMPLE:</b><br>• General: + S → He runs.<br>• Termina en O, X, S, SH, Z: + ES → He goes.<br>• Consonante + Y: Y → IES → He tries.<br>• have → has.</div>' +
       '<div class="s4-rule"><b>Regla clave:</b> en inglés el pronombre NUNCA se omite. Siempre debe estar escrito.</div>' +
-      '<div class="ob-actions"><button id="s4ContrastNext" class="btn">Ir a ejercicios</button></div>' +
+      '<div class="ob-actions"><button id="s4ContrastNext" class="btn">Ir a ejercicios</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4ContrastNext").onclick = function () {
@@ -5404,7 +5530,11 @@ function renderSession4ExerciseA(container) {
       '<div class="ob-actions">' +
         '<button id="s4CheckA" class="btn">Revisar</button>' +
         '<button id="s4NextA" class="btn" disabled>Continuar</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4CheckA").onclick = function () {
@@ -5463,7 +5593,11 @@ function renderSession4ExerciseB(container) {
       '<div class="ob-actions">' +
         '<button id="s4CheckB" class="btn">Revisar</button>' +
         '<button id="s4NextB" class="btn" disabled>Completar sesión</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4CheckB").onclick = function () {
@@ -5522,7 +5656,11 @@ function renderSession4Complete(container, a, b) {
         '<div class="mp-profile-item"><div class="mp-profile-label">Total</div><div class="mp-profile-value">' + ((a || 0) + (b || 0)) + '/20</div></div>' +
       '</div>' +
       '<p class="ob-sub">Dominaste la Regla de Oro: sin -ING ser/estar básico, con -ING estar + ando/endo.</p>' +
-      '<div class="ob-actions"><button id="s4Back" class="btn">Volver al panel</button></div>' +
+      '<div class="ob-actions"><button id="s4Back" class="btn">Volver al panel</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s4Back").onclick = function () {
@@ -6303,7 +6441,11 @@ function renderSessionsPanel(container) {
           '<input id="cloudNewName" class="s4-input" type="text" placeholder="Nuevo nickname...">' +
           '<button id="cloudCreateBtn" class="btn">Crear</button>' +
         '</div>' +
-        '<div class="ob-actions"><button id="cloudCloseBtn" class="btn">Cerrar</button></div>' +
+        '<div class="ob-actions"><button id="cloudCloseBtn" class="btn">Cerrar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
     document.body.appendChild(modal);
 
@@ -6755,7 +6897,11 @@ function renderSession5Intro(container) {
       '<div class="badge">SESIÓN 5</div>' +
       '<h2 class="ob-title">Negación y Verbos Auxiliares</h2>' +
       '<p class="ob-sub">Los auxiliares definen el tiempo de la oración. Y para negar, la palabra "not" siempre va después del auxiliar.</p>' +
-      '<div class="ob-actions"><button id="s5Start" class="btn">Comenzar</button></div>' +
+      '<div class="ob-actions"><button id="s5Start" class="btn">Comenzar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s5Start").onclick = function () {
@@ -6776,7 +6922,11 @@ function renderSession5Aux(container) {
       '<div class="s4-rule"><b>TIEMPO CONTINUO → auxiliar TO BE</b><br>1ª persona → ' + ssDisplayEn("AM") + '<br>2ªs personas → ' + ssDisplayEn("ARE") + '<br>3ªs personas → ' + ssDisplayEn("IS") + '</div>' +
       '<div class="s4-rule"><b>TIEMPO SIMPLE → auxiliar DO / DOES</b><br>1ª y 2ªs personas → ' + ssDisplayEn("DO") + '<br>3ªs personas (he, she, it) → ' + ssDisplayEn("DOES") + '</div>' +
       '<div class="s4-rule"><b>¿Para qué sirven?</b><br>Los verbos auxiliares acompañan al verbo principal para definir el tiempo o la modalidad de la oración.</div>' +
-      '<div class="ob-actions"><button id="s5AuxNext" class="btn">Continuar</button></div>' +
+      '<div class="ob-actions"><button id="s5AuxNext" class="btn">Continuar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s5AuxNext").onclick = function () {
@@ -6797,7 +6947,11 @@ function renderSession5Rule(container) {
       '<div class="s4-rule"><b>SIMPLE:</b> Sujeto + do/does + ' + ssDisplayEn("not") + ' + verbo (sin -ing).<br>' + ssDisplayEn("I do not run.") + ' = No corro.</div>' +
       '<div class="s4-rule"><b>CONTINUO:</b> Sujeto + am/is/are + ' + ssDisplayEn("not") + ' + verbo con -ing.<br>' + ssDisplayEn("He is not writing.") + ' = Él no está escribiendo.</div>' +
       '<div class="s4-rule"><b>Regla absoluta:</b> para negar en inglés, la palabra "not" debe estar después del auxiliar. Punto.</div>' +
-      '<div class="ob-actions"><button id="s5RuleNext" class="btn">Ir a ejercicios</button></div>' +
+      '<div class="ob-actions"><button id="s5RuleNext" class="btn">Ir a ejercicios</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s5RuleNext").onclick = function () {
@@ -6832,7 +6986,11 @@ function renderSession5Exercise(container) {
       '<div class="ob-actions">' +
         '<button id="s5Check" class="btn">Revisar</button>' +
         '<button id="s5Next" class="btn" disabled>Completar sesión</button>' +
-      '</div>' +
+      '
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s5Check").onclick = function () {
@@ -6890,7 +7048,11 @@ function renderSession5Complete(container, score) {
         '<div class="mp-profile-item"><div class="mp-profile-label">Regla aplicada</div><div class="mp-profile-value">"not" después del auxiliar</div></div>' +
       '</div>' +
       '<p class="ob-sub">Dominaste la negación en los dos tiempos, sin mezclar personas.</p>' +
-      '<div class="ob-actions"><button id="s5Back" class="btn">Volver al panel</button></div>' +
+      '<div class="ob-actions"><button id="s5Back" class="btn">Volver al panel</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
     '</div>';
 
   document.getElementById("s5Back").onclick = function () {
@@ -7845,7 +8007,11 @@ function renderSessionsPanel(container) {
           '<input id="libVideoInput" class="s4-input yt-input" type="text" placeholder="Pega el link de YouTube de esta regla..." value="' + vid.replace(/"/g, "&quot;") + '">' +
           '<button id="libVideoSave" class="btn yt-load" type="button">Vincular</button>' +
         '</div>' +
-        '<div class="ob-actions"><button id="libBack" class="ob-small-btn">← Volver</button></div>' +
+        '<div class="ob-actions"><button id="libBack" class="ob-small-btn">← Volver</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
 
     document.getElementById("libVideoSave").addEventListener("click", function () {
@@ -7880,7 +8046,11 @@ function renderSessionsPanel(container) {
         '<input id="libSearch" class="s4-input" type="text" placeholder="Busca: gerundio, not, preposiciones..." autocomplete="off">' +
         '<div id="libSuggest" class="lib-suggest"></div>' +
         '<div id="libBody" class="lib-body"></div>' +
-        '<div class="ob-actions"><button id="libClose" class="btn">Cerrar</button></div>' +
+        '<div class="ob-actions"><button id="libClose" class="btn">Cerrar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
     document.body.appendChild(modal);
 
@@ -8243,7 +8413,11 @@ function renderSessionsPanel(container) {
           '<input id="lib2VideoInput" class="s4-input yt-input" type="text" placeholder="Pega el link de YouTube de esta regla..." value="' + vid.replace(/"/g, "&quot;") + '">' +
           '<button id="lib2VideoSave" class="btn yt-load" type="button" data-rule="' + rule.id + '">Vincular</button>' +
         '</div>' +
-        '<div class="ob-actions"><button id="lib2Back" class="ob-small-btn">← Volver</button></div>' +
+        '<div class="ob-actions"><button id="lib2Back" class="ob-small-btn">← Volver</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
 
     body.innerHTML = html;
@@ -8261,7 +8435,11 @@ function renderSessionsPanel(container) {
         '<input id="lib2Search" class="s4-input" type="text" placeholder="Busca: gerundio, not, preposiciones..." autocomplete="off">' +
         '<div id="lib2Suggest" class="lib-suggest"></div>' +
         '<div id="lib2Body" class="lib-body"></div>' +
-        '<div class="ob-actions"><button id="lib2Close" class="btn">Cerrar</button></div>' +
+        '<div class="ob-actions"><button id="lib2Close" class="btn">Cerrar</button>
+    <button id="missionChatBtn" class="btn" style="background: linear-gradient(135deg, #00c6fb, #005bea);">
+    💬 Conversación Libre
+  </button>
+</div>' +
       '</div>';
     document.body.appendChild(modal);
 
@@ -8444,3 +8622,117 @@ function renderSessionsPanel(container) {
     init();
   }
 })();
+
+/* ============================================
+   PANEL v4: REGISTRO CENTRAL + COLAPSABLES
+   Escalable a 15-20 sesiones sin scroll.
+============================================ */
+
+var AURIX_SESSIONS = [
+  { num: 1, title: "Primera conversación", done: ssSession1Done, open: function (c) { if (typeof renderMissionProfileName === "function") renderMissionProfileName(c); } },
+  { num: 2, title: "Nivel Cero: Singular y Plural", done: ssSession2Done, open: function (c) { renderSession2Intro(c); } },
+  { num: 3, title: "Filtro Maestro R.O.D.", done: ssSession3Done, open: function (c) { renderSession3Intro(c); } },
+  { num: 4, title: "Presente Simple vs Continuo", done: ssSession4Done, open: function (c) { renderSession4Intro(c); } },
+  { num: 5, title: "Negación y Verbos Auxiliares", done: ssSession5Done, open: function (c) { renderSession5Intro(c); } }
+];
+
+function renderSessionsPanel(container) {
+  var doneList = [];
+  var current = null;
+  var lockedList = [];
+
+  AURIX_SESSIONS.forEach(function (s) {
+    if (s.done()) {
+      doneList.push(s);
+    } else if (!current) {
+      current = s;
+    } else {
+      lockedList.push(s);
+    }
+  });
+
+  var total = AURIX_SESSIONS.length;
+  var doneCount = doneList.length;
+  var progress = Math.round((doneCount / total) * 100);
+
+  function cardHTML(s, state) {
+    var go = state === "done" ? "Repasar ›" : (state === "current" ? "Continuar ›" : "🔒");
+    var cardCls = state === "done" ? "completed" : (state === "current" ? "available ss-next" : "locked");
+    var badgeCls = state === "done" ? "done" : (state === "current" ? "next" : "locked");
+    var status = state === "done" ? "Completada" : (state === "current" ? "Disponible" : "Bloqueada");
+
+    return (
+      '<div class="ss-card ss-tap ' + cardCls + '" data-ss="' + s.num + '">' +
+        '<div class="ss-card-head">' +
+          '<span class="ss-badge ' + badgeCls + '">Sesión ' + s.num + '</span>' +
+          '<span class="ss-go' + (go === "🔒" ? " ss-locked" : "") + '">' + go + '</span>' +
+        '</div>' +
+        '<div class="ss-title">' + s.title + '</div>' +
+        '<div class="ss-status">' + status + '</div>' +
+      '</div>'
+    );
+  }
+
+  var html =
+    '<div class="badge">AURIX OS</div>' +
+    '<h2 class="ob-title">Panel de sesiones</h2>' +
+    '<p class="ob-sub">Tu avance: las completadas se agrupan, la actual siempre a la vista.</p>' +
+    '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
+    '<p class="ss-status">Progreso: ' + doneCount + '/' + total + ' sesiones · 🏆 ' + doneCount + ' logros de sesión</p>';
+
+  if (current) {
+    html += '<div class="ss-now-label">Tu siguiente sesión</div>' + cardHTML(current, "current");
+  } else {
+    html += '<div class="ss-all-done">🏆 Curso completo.<br>Repasa cualquier sesión o rompe tus récords de speaking.</div>';
+  }
+
+  html +=
+    '<button class="ss-collapse" id="ssDoneToggle" type="button">✅ Completadas (' + doneCount + ') <span class="ss-caret">▾</span></button>' +
+    '<div class="ss-collapse-body hidden" id="ssDoneBody">' +
+      doneList.map(function (s) { return cardHTML(s, "done"); }).join("") +
+    '</div>';
+
+  if (lockedList.length) {
+    html +=
+      '<button class="ss-collapse" id="ssLockToggle" type="button">🔒 Por delante (' + lockedList.length + ') <span class="ss-caret">▾</span></button>' +
+      '<div class="ss-collapse-body hidden" id="ssLockBody">' +
+        lockedList.map(function (s) { return cardHTML(s, "locked"); }).join("") +
+      '</div>';
+  }
+
+  container.innerHTML = '<div class="card glass ob-card">' + html + '</div>';
+
+  function bindToggle(tId, bId) {
+    var t = document.getElementById(tId);
+    var b = document.getElementById(bId);
+    if (!t || !b) return;
+    t.addEventListener("click", function () {
+      t.classList.toggle("open");
+      b.classList.toggle("hidden");
+    });
+  }
+
+  bindToggle("ssDoneToggle", "ssDoneBody");
+  bindToggle("ssLockToggle", "ssLockBody");
+
+  AURIX_SESSIONS.forEach(function (s) {
+    var el = container.querySelector('[data-ss="' + s.num + '"]');
+    if (!el) return;
+
+    el.addEventListener("click", function () {
+      if (!s.done() && s !== current) {
+        el.classList.add("ss-deny");
+        setTimeout(function () { el.classList.remove("ss-deny"); }, 450);
+        if (typeof ssSpeak === "function") {
+          ssSpeak("Completa la sesión anterior para desbloquear esta sesión.", "narrator");
+        }
+        return;
+      }
+      s.open(container);
+    });
+  });
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Panel de sesiones. Progreso: " + doneCount + " de " + total + ". Tu siguiente sesión es la número " + (current ? current.num : total) + ".", "narrator");
+  }
+}
