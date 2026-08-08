@@ -5838,3 +5838,225 @@ function renderSessionsPanel(container) {
     }
   }, 600);
 })();
+
+/* ============================================
+   COMPAT EDGE / VERCEL / SAFARI
+   Contexto maestro + puntaje fallback
+============================================ */
+
+(function () {
+  if (window.__aurixCompatPatch) {
+    return;
+  }
+
+  window.__aurixCompatPatch = true;
+
+  var BaseAC = window.AudioContext || window.webkitAudioContext;
+
+  /* 1) Contexto maestro creado en el primer gesto real */
+  function ensureMaster() {
+    var m = window.__aurixMasterCtx;
+
+    if (m && m.state !== "closed") {
+      if (m.state === "suspended") {
+        try { m.resume(); } catch (e) {}
+      }
+      return m;
+    }
+
+    if (!BaseAC) {
+      return null;
+    }
+
+    try {
+      var c = new BaseAC();
+      try { c.resume(); } catch (e) {}
+      window.__aurixMasterCtx = c;
+    } catch (e) {
+      // Ignorar.
+    }
+
+    return window.__aurixMasterCtx;
+  }
+
+  document.addEventListener("pointerdown", function () {
+    ensureMaster();
+  }, true);
+
+  /* 2) Todo AudioContext nuevo = maestro compartido y protegido */
+  if (BaseAC) {
+    function SharedAC() {
+      var ctx = ensureMaster();
+
+      if (!ctx) {
+        ctx = new BaseAC();
+      }
+
+      ctx.close = function () {
+        return Promise.resolve();
+      };
+
+      try { ctx.resume(); } catch (e) {}
+
+      if (window.__aurixContexts) {
+        window.__aurixContexts.push(ctx);
+      }
+
+      return ctx;
+    }
+
+    SharedAC.prototype = BaseAC.prototype;
+    SharedAC.__aurixShared = true;
+
+    window.AudioContext = SharedAC;
+    window.webkitAudioContext = SharedAC;
+  }
+
+  /* 3) Vigilante de voz para puntaje fallback */
+  var watch = { raf: 0, voiced: 0, total: 0, active: false };
+
+  function stopVoiceWatch() {
+    watch.active = false;
+    if (watch.raf) {
+      cancelAnimationFrame(watch.raf);
+    }
+    watch.raf = 0;
+  }
+
+  function startVoiceWatch() {
+    stopVoiceWatch();
+
+    var tries = 0;
+
+    function attach() {
+      var streams = window.__aurixActiveStreams || [];
+      var s = null;
+
+      for (var i = streams.length - 1; i >= 0; i--) {
+        if (streams[i].active) {
+          s = streams[i];
+          break;
+        }
+      }
+
+      if (!s && tries < 10) {
+        tries++;
+        setTimeout(attach, 300);
+        return;
+      }
+
+      if (!s || !BaseAC) {
+        return;
+      }
+
+      var ctx = window.__aurixMasterCtx || new BaseAC();
+      var src = ctx.createMediaStreamSource(s);
+      var an = ctx.createAnalyser();
+      an.fftSize = 256;
+      src.connect(an);
+
+      var data = new Uint8Array(an.fftSize);
+
+      watch.active = true;
+      watch.voiced = 0;
+      watch.total = 0;
+
+      function tick() {
+        if (!watch.active) {
+          return;
+        }
+
+        an.getByteTimeDomainData(data);
+
+        var sum = 0;
+        for (var i = 0; i < data.length; i++) {
+          var d = (data[i] - 128) / 128;
+          sum += d * d;
+        }
+
+        var rms = Math.sqrt(sum / data.length) * 100;
+
+        watch.total++;
+        if (rms > 6) {
+          watch.voiced++;
+        }
+
+        watch.raf = requestAnimationFrame(tick);
+      }
+
+      tick();
+    }
+
+    attach();
+  }
+
+  function fallbackCheck() {
+    var v = document.getElementById("micScoreValue");
+    var score = v ? (parseInt(v.textContent, 10) || 0) : 0;
+
+    if (score === 0 && watch.total > 30 && watch.voiced > watch.total * 0.12) {
+      var coverage = watch.voiced / watch.total;
+      var fb = Math.max(40, Math.min(85, Math.round(40 + coverage * 60)));
+
+      if (v) {
+        v.textContent = fb + "%";
+      }
+
+      var fill = document.getElementById("micScoreFill");
+      if (fill) {
+        fill.style.width = fb + "%";
+      }
+
+      var tr = document.getElementById("micTranscript");
+      if (tr) {
+        tr.textContent = "(transcripción no disponible en este navegador)";
+      }
+
+      var st = document.getElementById("micStatus");
+      if (st) {
+        st.textContent = "Tu navegador no transcribió, pero detectamos tu voz. Puntaje aproximado: " + fb + "%.";
+      }
+
+      var sel = document.getElementById("micPhraseSelect");
+      var phrase = sel ? sel.value : "";
+
+      if (phrase && typeof appState !== "undefined") {
+        if (!appState.speakingRecords) {
+          appState.speakingRecords = {};
+        }
+
+        var r = appState.speakingRecords[phrase];
+
+        if (r) {
+          r.last = fb;
+          if (fb > r.best) {
+            r.best = fb;
+          }
+          if (typeof saveAppState === "function") {
+            saveAppState();
+          }
+        } else if (typeof window.aurixUpdateRecord === "function") {
+          window.aurixUpdateRecord(phrase, fb);
+        }
+      }
+    }
+
+    stopVoiceWatch();
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (!t) {
+      return;
+    }
+
+    if (t.id === "micRecordBtn" || (t.closest && t.closest("#micRecordBtn"))) {
+      startVoiceWatch();
+    }
+
+    if (t.id === "micStopBtn" || (t.closest && t.closest("#micStopBtn"))) {
+      setTimeout(fallbackCheck, 900);
+    }
+  }, true);
+})();
