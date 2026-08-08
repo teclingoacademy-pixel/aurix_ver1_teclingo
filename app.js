@@ -6060,3 +6060,530 @@ function renderSessionsPanel(container) {
     }
   }, true);
 })();
+
+/* ============================================
+   AURIX CLOUD DB CONNECTOR + MULTI-USUARIO
+============================================ */
+
+(function () {
+  if (window.__aurixCloudInjected) {
+    return;
+  }
+
+  window.__aurixCloudInjected = true;
+
+  window.AURIX_API = "https://script.google.com/macros/s/AKfycbw0VN6XVNz_qdEx6zmAI5YMTPQG7acYcssVqBC4q5WO0vjbXV0H8oHqfbUZWURhIHhE/exec";
+
+  var CLOUD_USER_KEY = "aurix_cloud_user_id";
+
+  function cloudUserId() {
+    return localStorage.getItem(CLOUD_USER_KEY) || "";
+  }
+
+  function setCloudUserId(id) {
+    localStorage.setItem(CLOUD_USER_KEY, id);
+  }
+
+  function apiGet(params) {
+    var qs = Object.keys(params).map(function (k) {
+      return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+    }).join("&");
+    return fetch(window.AURIX_API + "?" + qs).then(function (r) { return r.json(); });
+  }
+
+  function apiPost(body) {
+    return fetch(window.AURIX_API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+
+  function sheetToState(data) {
+    var st = (typeof defaultAppState === "function") ? defaultAppState() : {};
+    var u = data.user || {};
+    var a = data.adn || {};
+
+    st.nickname = u.nickname || "";
+    st.goal = a.goal || "";
+    st.goalLabel = a.goal_label || "";
+    st.level = a.level_verified || "";
+    st.minutes = String(a.minutes_per_day || "");
+    st.route = a.route || "";
+    st.routeLabel = a.route_label || "";
+
+    st.skills = {
+      reading: Number(a.skill_reading || 5),
+      listening: Number(a.skill_listening || 5),
+      speaking: Number(a.skill_speaking || 5),
+      writing: Number(a.skill_writing || 5)
+    };
+
+    st.onboardingCompleted = String(a.onboarding_completed) === "true";
+    st.mission1Completed = String(a.mission1_completed) === "true";
+
+    var ses = {};
+    (data.sessions || []).forEach(function (r) {
+      if (Number(r.session_id) === 2) ses.session2Completed = r.status === "completed";
+      if (Number(r.session_id) === 3) ses.session3Completed = r.status === "completed";
+      if (Number(r.session_id) === 4) ses.session4Completed = r.status === "completed";
+    });
+    st.sessions = ses;
+
+    var rec = {};
+    (data.speaking || []).forEach(function (r) {
+      rec[r.phrase] = {
+        attempts: Number(r.attempts) || 0,
+        best: Number(r.best) || 0,
+        last: Number(r.last) || 0,
+        history: [],
+        goal: String(r.goal_reached) === "true"
+      };
+    });
+    st.speakingRecords = rec;
+
+    return st;
+  }
+
+  window.aurixCloudLoad = function (userId, cb) {
+    apiGet({ action: "load", user_id: userId }).then(function (data) {
+      if (data && data.ok) {
+        appState = sheetToState(data);
+        if (typeof saveAppState === "function") {
+          saveAppState();
+        }
+        setCloudUserId(userId);
+        updateCloudChip();
+      }
+      if (cb) cb(data);
+    }).catch(function () {
+      if (cb) cb(null);
+    });
+  };
+
+  var syncTimer = null;
+
+  function cloudSync() {
+    if (!window.AURIX_API || window.AURIX_API.indexOf("PEGAR_AQUI") === 0) {
+      return;
+    }
+    var id = cloudUserId();
+    if (!id) {
+      return;
+    }
+    apiPost({ action: "sync", user_id: id, state: appState }).catch(function () {});
+  }
+
+  window.aurixCloudSync = function () {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(cloudSync, 1500);
+  };
+
+  var origSave = window.saveAppState;
+  window.saveAppState = function () {
+    if (origSave) {
+      origSave();
+    }
+    window.aurixCloudSync();
+  };
+
+  function updateCloudChip() {
+    var chip = document.getElementById("cloudUserChip");
+    if (!chip) {
+      return;
+    }
+    var name = (typeof appState !== "undefined" && appState.nickname) ? appState.nickname : "sin usuario";
+    chip.innerHTML = "👤 " + name;
+  }
+
+  function openCloudModal() {
+    var modal = document.getElementById("cloudModal");
+    var list = document.getElementById("cloudUserList");
+
+    modal.classList.remove("hidden");
+    list.innerHTML = '<div class="ms-sub">Cargando usuarios...</div>';
+
+    apiGet({ action: "listUsers" }).then(function (data) {
+      if (!data || !data.ok) {
+        list.innerHTML = '<div class="ms-sub">No se pudo conectar con Google Sheets.</div>';
+        return;
+      }
+
+      list.innerHTML = "";
+
+      (data.users || []).forEach(function (u) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "cloud-user-row";
+        b.innerHTML = "<b>" + u.nickname + "</b><span>" + u.user_id + "</span>";
+
+        b.addEventListener("click", function () {
+          window.aurixCloudLoad(u.user_id, function () {
+            modal.classList.add("hidden");
+
+            if (typeof aurixSpeakQueued === "function") {
+              aurixSpeakQueued("ADN cargado de " + (appState.nickname || u.nickname));
+            }
+
+            if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
+              renderSessionsPanel(ensureOnboardingScreen());
+            }
+          });
+        });
+
+        list.appendChild(b);
+      });
+    }).catch(function () {
+      list.innerHTML = '<div class="ms-sub">Error de conexión.</div>';
+    });
+  }
+
+  function injectCloudUI() {
+    if (document.getElementById("cloudUserChip")) {
+      return;
+    }
+
+    var chip = document.createElement("button");
+    chip.id = "cloudUserChip";
+    chip.type = "button";
+    chip.className = "cloud-user-chip";
+    document.body.appendChild(chip);
+    chip.addEventListener("click", openCloudModal);
+    updateCloudChip();
+
+    var modal = document.createElement("div");
+    modal.id = "cloudModal";
+    modal.className = "mic-modal hidden";
+    modal.innerHTML =
+      '<div class="mic-card">' +
+        '<div class="ms-title">👤 Cambiar usuario (pruebas)</div>' +
+        '<div class="ms-sub">Carga el ADN de un usuario desde Google Sheets o crea uno nuevo.</div>' +
+        '<div id="cloudUserList" class="cloud-list"></div>' +
+        '<div class="ms-actions" style="margin-top:10px;">' +
+          '<input id="cloudNewName" class="s4-input" type="text" placeholder="Nuevo nickname...">' +
+          '<button id="cloudCreateBtn" class="btn">Crear</button>' +
+        '</div>' +
+        '<div class="ob-actions"><button id="cloudCloseBtn" class="btn">Cerrar</button></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    document.getElementById("cloudCloseBtn").addEventListener("click", function () {
+      modal.classList.add("hidden");
+    });
+
+    document.getElementById("cloudCreateBtn").addEventListener("click", function () {
+      var name = (document.getElementById("cloudNewName").value || "").trim();
+      if (!name) {
+        return;
+      }
+
+      var id = "U-" + Date.now();
+
+      appState = (typeof defaultAppState === "function") ? defaultAppState() : {};
+      appState.nickname = name;
+
+      if (typeof saveAppState === "function") {
+        saveAppState();
+      }
+
+      setCloudUserId(id);
+      cloudSync();
+      updateCloudChip();
+      modal.classList.add("hidden");
+
+      if (typeof aurixSpeakQueued === "function") {
+        aurixSpeakQueued("Usuario creado: " + name);
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectCloudUI);
+  } else {
+    injectCloudUI();
+  }
+
+  setTimeout(function () {
+    var id = cloudUserId();
+    if (id && window.AURIX_API.indexOf("PEGAR_AQUI") !== 0) {
+      window.aurixCloudLoad(id);
+    }
+  }, 1200);
+})();
+
+
+/* ============================================
+   GUARDIAN 9:16: DETECTA DESBORDE Y COMPACTA
+============================================ */
+
+(function () {
+  if (window.__aurixFitGuard) {
+    return;
+  }
+
+  window.__aurixFitGuard = true;
+
+  function checkFit() {
+    var over = document.documentElement.scrollWidth > window.innerWidth + 1;
+    document.body.classList.toggle("fit-overflow", over);
+  }
+
+  setInterval(checkFit, 1200);
+  window.addEventListener("resize", checkFit);
+  window.addEventListener("orientationchange", checkFit);
+})();
+
+
+/* ============================================
+   SKIP DE ACTIVACION PARA USUARIOS CON AVANCE
+   La pantalla "Sistema activo / personalizar"
+   solo existe para la PRIMERA interaccion.
+============================================ */
+
+function aurixGoToPanel() {
+  if (typeof ensureOnboardingScreen !== "function" || typeof renderSessionsPanel !== "function") {
+    return;
+  }
+
+  var container = ensureOnboardingScreen();
+
+  renderSessionsPanel(container);
+
+  if (typeof showScreen === "function") {
+    showScreen(container);
+  }
+
+  if (typeof aurixWelcomeBack === "function") {
+    aurixWelcomeBack();
+  }
+}
+
+function aurixHasProgress() {
+  var s = (typeof appState !== "undefined") ? appState : {};
+
+  var ses = s.sessions || {};
+
+  return Boolean(
+    s.onboardingCompleted ||
+    s.mission1Completed ||
+    ses.session2Completed ||
+    ses.session3Completed ||
+    ses.session4Completed
+  );
+}
+
+/* Override: la activacion completa solo para usuarios nuevos */
+async function startActivation() {
+  if (typeof ensureTTS === "function") {
+    await ensureTTS();
+  }
+
+  if (window.AurixTTS) {
+    window.AurixTTS.setEnabled(true);
+  }
+
+  /* Usuario con avance: directo al panel, sin pantalla sobrante */
+  if (aurixHasProgress()) {
+    aurixGoToPanel();
+    return;
+  }
+
+  /* Usuario nuevo: activacion completa original */
+  if (window.AurixTTS) {
+    await window.AurixTTS.speakRichText("Iniciando sistema.", "narrator");
+  }
+
+  showScreen(activation);
+
+  var progress = 0;
+  var progressFill = document.getElementById("progressFill");
+
+  var interval = setInterval(function () {
+    progress = progress + 4;
+
+    if (progress > 100) {
+      progress = 100;
+    }
+
+    if (progressFill) {
+      progressFill.style.width = progress + "%";
+    }
+
+    if (progress === 100) {
+      clearInterval(interval);
+      finishActivation();
+    }
+  }, 80);
+}
+
+/* ============================================
+   BOTON DE REGRESO + HISTORIAL DE NAVEGACION
+============================================ */
+
+(function () {
+  if (window.__aurixNavInjected) {
+    return;
+  }
+
+  window.__aurixNavInjected = true;
+
+  window.__aurixHistory = [];
+
+  var navigatingBack = false;
+
+  var FN_NAMES = [
+    "renderOnboardingStep",
+    "renderSessionsPanel",
+    "renderWelcome",
+    "renderDna",
+    "renderMissionIntro",
+    "renderMissionProfileName",
+    "renderMissionProfileAge",
+    "renderMissionProfileFrom",
+    "renderMissionProfileOccupation",
+    "renderMissionProfileLikes",
+    "renderMissionFinalIntro",
+    "renderMissionTeach",
+    "renderMissionPractice",
+    "renderMissionResponse",
+    "renderMissionComplete",
+    "renderSession2Intro",
+    "renderSession2Teach",
+    "renderSession2Exercise",
+    "renderSession2Complete",
+    "renderSession3Intro",
+    "renderSession3Rule",
+    "renderSession3Theory",
+    "renderSession3Gerund",
+    "renderSession3Contrast",
+    "renderSession3Exercise",
+    "renderSession3ExerciseA",
+    "renderSession3ExerciseB",
+    "renderSession3Complete",
+    "renderSession4Intro",
+    "renderSession4Rule",
+    "renderSession4Gerund",
+    "renderSession4Contrast",
+    "renderSession4ExerciseA",
+    "renderSession4ExerciseB",
+    "renderSession4Complete"
+  ];
+
+  function argsKey(args) {
+    var parts = [];
+    for (var i = 0; i < args.length; i++) {
+      var a = args[i];
+      if (a && a.nodeType) {
+        continue;
+      }
+      parts.push(String(a));
+    }
+    return parts.join("|");
+  }
+
+  function pushHistory(fn, args) {
+    if (navigatingBack) {
+      return;
+    }
+
+    var key = fn + ":" + argsKey(args);
+    var last = window.__aurixHistory[window.__aurixHistory.length - 1];
+
+    if (last && last.key === key) {
+      return;
+    }
+
+    window.__aurixHistory.push({
+      fn: fn,
+      args: Array.prototype.slice.call(args),
+      key: key
+    });
+
+    if (window.__aurixHistory.length > 40) {
+      window.__aurixHistory.shift();
+    }
+
+    updateBackBtn();
+  }
+
+  function updateBackBtn() {
+    var btn = document.getElementById("aurixBackBtn");
+    if (!btn) {
+      return;
+    }
+    btn.classList.toggle("hidden", window.__aurixHistory.length <= 1);
+  }
+
+  window.aurixGoBack = function () {
+    if (window.__aurixHistory.length <= 1) {
+      return;
+    }
+
+    window.__aurixHistory.pop();
+
+    var prev = window.__aurixHistory[window.__aurixHistory.length - 1];
+
+    if (!prev) {
+      return;
+    }
+
+    navigatingBack = true;
+
+    try {
+      var fn = window[prev.fn];
+      if (typeof fn === "function") {
+        fn.apply(null, prev.args);
+      }
+    } finally {
+      navigatingBack = false;
+    }
+
+    updateBackBtn();
+  };
+
+  function wrapAll() {
+    FN_NAMES.forEach(function (name) {
+      var orig = window[name];
+
+      if (typeof orig !== "function" || orig.__aurixWrappedNav) {
+        return;
+      }
+
+      var wrapped = function () {
+        pushHistory(name, arguments);
+        return orig.apply(this, arguments);
+      };
+
+      wrapped.__aurixWrappedNav = true;
+      window[name] = wrapped;
+    });
+  }
+
+  function injectBackBtn() {
+    if (document.getElementById("aurixBackBtn")) {
+      return;
+    }
+
+    var btn = document.createElement("button");
+    btn.id = "aurixBackBtn";
+    btn.type = "button";
+    btn.className = "aurix-back-btn hidden";
+    btn.innerHTML = "←";
+    btn.setAttribute("aria-label", "Regresar a la pantalla anterior");
+    document.body.appendChild(btn);
+
+    btn.addEventListener("click", function () {
+      window.aurixGoBack();
+    });
+
+    updateBackBtn();
+  }
+
+  wrapAll();
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectBackBtn);
+  } else {
+    injectBackBtn();
+  }
+})();
