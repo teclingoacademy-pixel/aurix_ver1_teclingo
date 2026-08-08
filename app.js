@@ -6968,3 +6968,681 @@ function aurixNextLessonPreview() {
   return { title: "Repaso", preview: "Practica speaking y rompe tus récords de acento." };
 }
 
+
+/* ============================================
+   VIDEO YOUTUBE + INYECCION EN PANTALLAS TEORIA
+============================================ */
+
+(function () {
+  if (window.__aurixVideoPatch) {
+    return;
+  }
+
+  window.__aurixVideoPatch = true;
+
+  function ytExtractId(url) {
+    if (!url) {
+      return null;
+    }
+
+    var m = String(url).match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+
+    if (m) {
+      return m[1];
+    }
+
+    if (/^[\w-]{11}$/.test(String(url).trim())) {
+      return String(url).trim();
+    }
+
+    return null;
+  }
+
+  window.aurixAddVideo = function (container, storageKey) {
+    if (!container || !container.querySelector) {
+      return;
+    }
+
+    var card = container.querySelector(".ob-card") || container;
+
+    if (card.querySelector(".yt-box")) {
+      return;
+    }
+
+    var saved = "";
+
+    try {
+      saved = localStorage.getItem(storageKey) || "";
+    } catch (e) {
+      // Ignorar.
+    }
+
+    var box = document.createElement("div");
+    box.className = "yt-box";
+
+    box.innerHTML =
+      '<div class="yt-head">🎬 Video de apoyo</div>' +
+      '<div class="yt-frame" data-yt-frame></div>' +
+      '<div class="yt-empty" data-yt-empty>Sin video todavía.<br>Pega un link de YouTube abajo.</div>' +
+      '<div class="yt-controls">' +
+        '<input class="s4-input yt-input" type="text" placeholder="Pega el link de YouTube..." value="' + saved.replace(/"/g, "&quot;") + '">' +
+        '<button class="btn yt-load" type="button">Cargar</button>' +
+      '</div>';
+
+    var actions = card.querySelector(".ob-actions");
+
+    if (actions) {
+      card.insertBefore(box, actions);
+    } else {
+      card.appendChild(box);
+    }
+
+    var frame = box.querySelector("[data-yt-frame]");
+    var empty = box.querySelector("[data-yt-empty]");
+    var input = box.querySelector(".yt-input");
+    var loadBtn = box.querySelector(".yt-load");
+
+    function render(url) {
+      var id = ytExtractId(url);
+
+      if (id) {
+        frame.innerHTML =
+          '<iframe src="https://www.youtube.com/embed/' + id + '" ' +
+          'title="Video de apoyo" frameborder="0" loading="lazy" ' +
+          'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+          'allowfullscreen></iframe>';
+        frame.style.display = "block";
+        empty.style.display = "none";
+      } else {
+        frame.innerHTML = "";
+        frame.style.display = "none";
+        empty.style.display = "block";
+      }
+    }
+
+    loadBtn.addEventListener("click", function () {
+      var url = input.value.trim();
+
+      try {
+        localStorage.setItem(storageKey, url);
+      } catch (e) {
+        // Ignorar.
+      }
+
+      render(url);
+    });
+
+    render(saved);
+  };
+
+  function wrapWithVideo(fnName, key) {
+    var orig = window[fnName];
+
+    if (typeof orig !== "function" || orig.__ytWrapped) {
+      return;
+    }
+
+    var wrapped = function () {
+      var res = orig.apply(this, arguments);
+      var container = arguments[0];
+
+      if (container && container.querySelector) {
+        window.aurixAddVideo(container, key);
+      }
+
+      return res;
+    };
+
+    wrapped.__ytWrapped = true;
+    window[fnName] = wrapped;
+  }
+
+  /* Pantallas de teoria con video de apoyo */
+  wrapWithVideo("renderSession3Rule", "aurix_yt_s3rule");
+  wrapWithVideo("renderSession3Theory", "aurix_yt_s3theory");
+  wrapWithVideo("renderSession4Intro", "aurix_yt_s4intro");
+  wrapWithVideo("renderSession4Rule", "aurix_yt_s4rule");
+  wrapWithVideo("renderSession5Aux", "aurix_yt_s5aux");
+  wrapWithVideo("renderSession5Rule", "aurix_yt_s5rule");
+})();
+
+/* ============================================
+   PRACTICA REAL: FRASES UNIDAS (R.O.D.)
+   La teoria sigue estricta por canales;
+   la practica usa las unidades reales.
+============================================ */
+
+(function () {
+  if (window.__aurixPracticePatch) {
+    return;
+  }
+
+  window.__aurixPracticePatch = true;
+
+  /* Unidades reales del Filtro R.O.D. */
+  var ROD_PRACTICE = [
+    "I am",
+    "You are",
+    "We are",
+    "They are",
+    "He is",
+    "She is",
+    "It is"
+  ];
+
+  function setPractice(list) {
+    window.__aurixPractice = list || null;
+  }
+
+  function wrapSet(fnName, list) {
+    var orig = window[fnName];
+
+    if (typeof orig !== "function" || orig.__prWrapped) {
+      return;
+    }
+
+    var wrapped = function () {
+      setPractice(list);
+      return orig.apply(this, arguments);
+    };
+
+    wrapped.__prWrapped = true;
+    window[fnName] = wrapped;
+  }
+
+  /* Pantallas del Filtro R.O.D.: practica unida */
+  [
+    "renderSession3Intro",
+    "renderSession3Rule",
+    "renderSession3Theory",
+    "renderSession3Gerund",
+    "renderSession3Contrast",
+    "renderSession3Exercise",
+    "renderSession3ExerciseA",
+    "renderSession3ExerciseB",
+    "renderSession3Complete"
+  ].forEach(function (n) {
+    wrapSet(n, ROD_PRACTICE);
+  });
+
+  /* Demas pantallas: usar las frases de la pantalla */
+  [
+    "renderSession2Intro",
+    "renderSession2Teach",
+    "renderSession2Exercise",
+    "renderSession2Complete",
+    "renderSession4Intro",
+    "renderSession4Rule",
+    "renderSession4Gerund",
+    "renderSession4Contrast",
+    "renderSession4ExerciseA",
+    "renderSession4ExerciseB",
+    "renderSession4Complete",
+    "renderSessionsPanel"
+  ].forEach(function (n) {
+    wrapSet(n, null);
+  });
+
+  function refreshPracticeUI() {
+    var select = document.getElementById("micPhraseSelect");
+    var modal = document.getElementById("aurixMicModal");
+
+    if (!select || !modal) {
+      return;
+    }
+
+    var list = window.__aurixPractice;
+
+    if (!list || !list.length) {
+      var old = modal.querySelector(".pr-rows");
+      if (old) {
+        old.style.display = "none";
+      }
+      return;
+    }
+
+    /* Reconstruir el selector con las frases unidas */
+    select.innerHTML = "";
+
+    list.forEach(function (p) {
+      var o = document.createElement("option");
+      o.value = p;
+      o.textContent = p;
+      select.appendChild(o);
+    });
+
+    /* Filas visibles: una por frase unida */
+    var rows = modal.querySelector(".pr-rows");
+
+    if (!rows) {
+      rows = document.createElement("div");
+      rows.className = "pr-rows";
+      select.parentNode.insertBefore(rows, select.nextSibling);
+    }
+
+    rows.style.display = "";
+    rows.innerHTML = "";
+
+    list.forEach(function (p) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "pr-row-btn";
+      b.innerHTML =
+        '<span class="pr-row-phrase">"' + p + '"</span>' +
+        '<span class="pr-row-icons">🔊 🎤</span>';
+
+      b.addEventListener("click", function () {
+        select.value = p;
+        select.dispatchEvent(new Event("change"));
+
+        if (window.AurixTTS) {
+          window.AurixTTS.speakRichText('**"' + p + '"**', "aurix");
+        }
+      });
+
+      rows.appendChild(b);
+    });
+
+    select.value = list[0];
+    select.dispatchEvent(new Event("change"));
+  }
+
+  function watchModal() {
+    var modal = document.getElementById("aurixMicModal");
+
+    if (!modal) {
+      setTimeout(watchModal, 800);
+      return;
+    }
+
+    var wasHidden = modal.classList.contains("hidden");
+
+    new MutationObserver(function () {
+      var isHidden = modal.classList.contains("hidden");
+
+      if (wasHidden && !isHidden) {
+        setTimeout(refreshPracticeUI, 60);
+      }
+
+      wasHidden = isHidden;
+    }).observe(modal, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  watchModal();
+})();
+
+/* ============================================
+   VOCES POR DEFECTO + NOMBRE AURIX COMO PALABRA
+   Narrador: Google español de Estados Unidos
+   AURIX:    Google UK English Female
+   El subtitulo muestra "AURIX"; la voz recibe
+   "Aurix" para pronunciarlo como palabra.
+============================================ */
+
+(function () {
+  if (window.__aurixVoicePatch) {
+    return;
+  }
+
+  window.__aurixVoicePatch = true;
+
+  var NARRATOR_DEFAULT = "Google español de Estados Unidos";
+  var AURIX_DEFAULT = "Google UK English Female";
+
+  function pronounce(text) {
+    return String(text)
+      .replace(/\bAURIX\b/g, "Aurix")
+      .replace(/\bA\.U\.R\.I\.X\./g, "Aurix");
+  }
+
+  function overrideSpeakSegment(tts) {
+    if (tts.__segmentOverridden) {
+      return;
+    }
+
+    tts.__segmentOverridden = true;
+
+    tts.speakSegmentFixed = function (segment) {
+      this.showSegmentSubtitle(segment);
+
+      var instance = this;
+      var spokenText = pronounce(segment.text);
+
+      return new Promise(function (resolve) {
+        if (!("speechSynthesis" in window)) {
+          var w = segment.text.split(/\s+/).length;
+          setTimeout(resolve, Math.max(700, w * 180));
+          return;
+        }
+
+        var utterance = new SpeechSynthesisUtterance(spokenText);
+        var voice = instance.getSelectedVoice(segment.voiceRole);
+
+        if (voice) {
+          utterance.voice = voice;
+        }
+
+        utterance.lang = segment.voiceRole === "aurix" ? "en-US" : "es-MX";
+        utterance.rate = segment.voiceRole === "aurix" ? 0.95 : 1;
+        utterance.pitch = segment.voiceRole === "aurix" ? 1.06 : 0.95;
+        utterance.volume = 1;
+
+        var words = spokenText.split(/\s+/).length;
+        var safetyMs = Math.min(30000, Math.max(2500, words * 850 + 1200));
+
+        var finished = false;
+        var safetyTimer = null;
+
+        var finish = function () {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          if (safetyTimer) {
+            clearTimeout(safetyTimer);
+          }
+          resolve();
+        };
+
+        safetyTimer = setTimeout(finish, safetyMs);
+
+        utterance.onend = finish;
+        utterance.onerror = finish;
+
+        utterance.onboundary = function (event) {
+          instance.handleBoundary(event, segment);
+        };
+
+        speechSynthesis.speak(utterance);
+      });
+    };
+
+    tts.speakSegment = tts.speakSegmentFixed;
+  }
+
+  function applyDefaults() {
+    var tts = window.AurixTTS;
+
+    if (!tts) {
+      setTimeout(applyDefaults, 500);
+      return;
+    }
+
+    var changed = false;
+
+    if (!tts.settings.narratorVoice || tts.settings.narratorVoice === "Auto") {
+      tts.settings.narratorVoice = NARRATOR_DEFAULT;
+      changed = true;
+    }
+
+    if (!tts.settings.aurixVoice || tts.settings.aurixVoice === "Auto") {
+      tts.settings.aurixVoice = AURIX_DEFAULT;
+      changed = true;
+    }
+
+    if (changed) {
+      try {
+        tts.saveSettings();
+      } catch (e) {
+        // Ignorar.
+      }
+
+      if (typeof tts.populateVoiceSelects === "function") {
+        try {
+          tts.populateVoiceSelects();
+        } catch (e) {
+          // Ignorar.
+        }
+      }
+    }
+
+    overrideSpeakSegment(tts);
+  }
+
+  applyDefaults();
+})();
+
+/* ============================================
+   PANEL v3: LA TARJETA ES EL BOTON
+   Se elimina la fila inferior de botones.
+============================================ */
+
+function renderSessionsPanel(container) {
+  var s1 = ssSession1Done();
+  var s2 = ssSession2Done();
+  var s3 = ssSession3Done();
+  var s4 = ssSession4Done();
+  var s5 = ssSession5Done();
+
+  var done = 0;
+  if (s1) done++;
+  if (s2) done++;
+  if (s3) done++;
+  if (s4) done++;
+  if (s5) done++;
+
+  var progress = Math.round((done / 5) * 100);
+
+  function cardHTML(num, completed, unlocked, isNext, title) {
+    var cardCls = completed ? "completed" : (unlocked ? "available" : "locked");
+    var badgeCls = completed ? "done" : (unlocked ? "next" : "locked");
+    var go = completed ? "Repasar ›" : (unlocked ? (isNext ? "Continuar ›" : "Entrar ›") : "🔒");
+    var status = completed ? "Completada" : (unlocked ? "Disponible" : "Bloqueada");
+    var nextCls = isNext && !completed ? " ss-next" : "";
+
+    return (
+      '<div class="ss-card ss-tap' + nextCls + " " + cardCls + '" data-ss="' + num + '">' +
+        '<div class="ss-card-head">' +
+          '<span class="ss-badge ' + badgeCls + '">Sesión ' + num + '</span>' +
+          '<span class="ss-go' + (go === "🔒" ? " ss-locked" : "") + '">' + go + '</span>' +
+        '</div>' +
+        '<div class="ss-title">' + title + '</div>' +
+        '<div class="ss-status">' + status + '</div>' +
+      '</div>'
+    );
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">AURIX OS</div>' +
+      '<h2 class="ob-title">Panel de sesiones</h2>' +
+      '<p class="ob-sub">Toca una tarjeta para entrar a su sesión.</p>' +
+      '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
+      '<p class="ss-status">Progreso: ' + done + '/5 sesiones</p>' +
+      '<div class="ss-grid">' +
+        cardHTML(1, s1, true, !s1, "Primera conversación") +
+        cardHTML(2, s2, s1, !s2 && s1, "Nivel Cero: Singular y Plural") +
+        cardHTML(3, s3, s2, !s3 && s2, "Filtro Maestro R.O.D.") +
+        cardHTML(4, s4, s3, !s4 && s3, "Presente Simple vs Continuo") +
+        cardHTML(5, s5, s4, !s5 && s4, "Negación y Verbos Auxiliares") +
+      '</div>' +
+    '</div>';
+
+  function bind(num, unlocked, fn) {
+    var el = container.querySelector('[data-ss="' + num + '"]');
+
+    if (!el) {
+      return;
+    }
+
+    el.addEventListener("click", function () {
+      if (!unlocked) {
+        el.classList.add("ss-deny");
+
+        setTimeout(function () {
+          el.classList.remove("ss-deny");
+        }, 450);
+
+        if (typeof ssSpeak === "function") {
+          ssSpeak("Completa la sesión anterior para desbloquear esta sesión.", "narrator");
+        }
+
+        return;
+      }
+
+      fn();
+    });
+  }
+
+  bind(1, true, function () {
+    if (typeof renderMissionProfileName === "function") {
+      renderMissionProfileName(container);
+    }
+  });
+
+  bind(2, s1, function () { renderSession2Intro(container); });
+  bind(3, s2, function () { renderSession3Intro(container); });
+  bind(4, s3, function () { renderSession4Intro(container); });
+  bind(5, s4, function () { renderSession5Intro(container); });
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Panel de sesiones. Progreso: " + done + " de 5. Toca una tarjeta para entrar.", "narrator");
+  }
+}
+
+/* ============================================
+   BOTON HOME: SIEMPRE DE VUELTA AL PANEL
+============================================ */
+
+(function () {
+  if (window.__aurixHomeInjected) {
+    return;
+  }
+
+  window.__aurixHomeInjected = true;
+
+  function injectHome() {
+    if (document.getElementById("aurixHomeBtn")) {
+      return;
+    }
+
+    var b = document.createElement("button");
+    b.id = "aurixHomeBtn";
+    b.type = "button";
+    b.className = "aurix-home-btn hidden";
+    b.innerHTML = "🏠";
+    b.setAttribute("aria-label", "Ir al panel principal");
+    document.body.appendChild(b);
+
+    b.addEventListener("click", function () {
+      /* Limpia el historial y regresa al panel del usuario */
+      if (window.__aurixHistory) {
+        window.__aurixHistory.length = 0;
+      }
+
+      if (typeof renderSessionsPanel === "function" && typeof ensureOnboardingScreen === "function") {
+        renderSessionsPanel(ensureOnboardingScreen());
+      }
+
+      if (typeof ssSpeak === "function") {
+        ssSpeak("Panel principal.", "narrator");
+      }
+    });
+  }
+
+  /* Visible solo dentro del contenido (no en arranque) */
+  setInterval(function () {
+    var b = document.getElementById("aurixHomeBtn");
+
+    if (!b) {
+      return;
+    }
+
+    var show = Boolean(window.__aurixHistory && window.__aurixHistory.length >= 1);
+    b.classList.toggle("hidden", !show);
+  }, 600);
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectHome);
+  } else {
+    injectHome();
+  }
+})();
+
+/* ============================================
+   TRANSCRIPCION COMPLETA (FRASES LARGAS)
+   Acumula TODOS los finales entre reinicios
+   del reconocimiento y repara el display.
+============================================ */
+
+(function () {
+  if (window.__aurixAccPatch) {
+    return;
+  }
+
+  window.__aurixAccPatch = true;
+
+  var Base = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (Base && !Base.__accWrapped) {
+    function AccSR() {
+      var inst = new Base();
+      var acc = "";
+
+      inst.addEventListener("result", function (event) {
+        var interim = "";
+        var i, r;
+
+        /* Acumular finales NUEVOS (desde resultIndex) */
+        for (i = event.resultIndex; i < event.results.length; i++) {
+          r = event.results[i];
+          if (r.isFinal) {
+            acc += r[0].transcript + " ";
+          }
+        }
+
+        /* Interinos actuales para mostrar en vivo */
+        for (i = 0; i < event.results.length; i++) {
+          r = event.results[i];
+          if (!r.isFinal) {
+            interim += r[0].transcript + " ";
+          }
+        }
+
+        window.__aurixFullTranscript = (acc + " " + interim)
+          .replace(/\s+/g, " ")
+          .trim();
+
+        /* Reescribir el display con el texto COMPLETO */
+        setTimeout(function () {
+          var el = document.getElementById("micTranscript");
+
+          if (el && window.__aurixFullTranscript) {
+            el.textContent = window.__aurixFullTranscript;
+          }
+        }, 0);
+      });
+
+      return inst;
+    }
+
+    AccSR.prototype = Base.prototype;
+    AccSR.__accWrapped = true;
+
+    window.SpeechRecognition = AccSR;
+    window.webkitSpeechRecognition = AccSR;
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+
+    if (!t) {
+      return;
+    }
+
+    /* Reset al iniciar una grabación nueva */
+    if (t.id === "micRecordBtn" || (t.closest && t.closest("#micRecordBtn"))) {
+      window.__aurixFullTranscript = "";
+    }
+
+    /* Antes de calificar, entregar la transcripción COMPLETA */
+    if (t.id === "micStopBtn" || (t.closest && t.closest("#micStopBtn"))) {
+      var full = window.__aurixFullTranscript || "";
+      var el = document.getElementById("micTranscript");
+
+      if (el && full && full.length > (el.textContent || "").length) {
+        el.textContent = full;
+      }
+    }
+  }, true);
+})();
