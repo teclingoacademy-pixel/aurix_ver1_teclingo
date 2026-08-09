@@ -51,6 +51,10 @@ const splash2 = document.getElementById("splash2");
 const splash3 = document.getElementById("splash3");
 const activation = document.getElementById("activation");
 
+const videoSplash = document.getElementById("videoSplash");
+const introVideo = document.getElementById("introVideo");
+let introAudioEnabled = false;
+
 const startDot = document.getElementById("startDot");
 const progressFill = document.getElementById("progressFill");
 const activationTitle = document.getElementById("activationTitle");
@@ -144,6 +148,49 @@ async function startSplashSequence() {
   await speakOrWait("Toca el punto para iniciar la secuencia.", 2500);
 }
 
+function playIntro(onDone) {
+  showScreen(videoSplash);
+
+  introVideo.muted = true;
+  introVideo.currentTime = 0;
+
+  introVideo.onended = function () {
+    if (typeof onDone === "function") onDone();
+  };
+
+  introVideo.play().catch(function () {
+    if (typeof onDone === "function") onDone();
+  });
+}
+
+function enableIntroAudio() {
+  if (introAudioEnabled) return;
+
+  if (!videoSplash.classList.contains("active")) return;
+
+  introAudioEnabled = true;
+  introVideo.muted = false;
+  introVideo.currentTime = 0;
+
+  introVideo.play().catch(function () {});
+}
+
+function setupIntroAudio() {
+  var events = ["pointerdown", "touchstart", "keydown"];
+
+  function handler() {
+    events.forEach(function (evt) {
+      document.removeEventListener(evt, handler);
+    });
+
+    enableIntroAudio();
+  }
+
+  events.forEach(function (evt) {
+    document.addEventListener(evt, handler);
+  });
+}
+
 function startExperience() {
   if (window.AurixTTS) {
     window.AurixTTS.init();
@@ -154,7 +201,10 @@ function startExperience() {
     return;
   }
 
-  startSplashSequence();
+  setupIntroAudio();
+  playIntro(function () {
+    startSplashSequence();
+  });
 }
 
 async function startActivation() {
