@@ -304,6 +304,10 @@ btnContinue.addEventListener("click", async function () {
 function resumeJourney() {
   const container = ensureOnboardingScreen();
 
+  if (window.setIntroProtocolActive) {
+    window.setIntroProtocolActive(false);
+  }
+
   if (appState.mission1Completed) {
     renderMissionDashboard(container);
     showScreen(container);
@@ -893,6 +897,10 @@ function renderWelcome(container) {
   appState.lastInteraction = "Onboarding completado";
   appState.onboardingCompleted = true;
   saveAppState();
+
+  if (window.setIntroProtocolActive) {
+    window.setIntroProtocolActive(false);
+  }
 
   const summary = [
     { label: "Meta", value: appState.goalLabel || "Sin definir" },
@@ -1614,6 +1622,10 @@ startExperience();
       return;
     }
 
+    if (window.setIntroProtocolActive) {
+      window.setIntroProtocolActive(true);
+    }
+
     playPowerSound("off");
     flashScreen();
 
@@ -1721,8 +1733,11 @@ startExperience();
 ============================================ */
 
 (function () {
+  var chatBtn = null;
+  var introProtocolActive = true;
+
   function injectChatButton() {
-    if (document.getElementById("aurixChatBtn")) {
+    if (chatBtn) {
       return;
     }
 
@@ -1741,14 +1756,36 @@ startExperience();
       window.open("https://teclingo-chat.vercel.app/", "_blank");
     });
 
+    chatBtn = btn;
     document.body.appendChild(btn);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", injectChatButton);
-  } else {
-    injectChatButton();
+  function removeChatButton() {
+    if (chatBtn) {
+      chatBtn.remove();
+      chatBtn = null;
+    }
   }
+
+  window.syncChatButton = function () {
+    if (
+      !introProtocolActive &&
+      typeof appState !== "undefined" &&
+      appState &&
+      appState.onboardingCompleted
+    ) {
+      injectChatButton();
+    } else {
+      removeChatButton();
+    }
+  };
+
+  window.setIntroProtocolActive = function (active) {
+    introProtocolActive = active;
+    window.syncChatButton();
+  };
+
+  window.syncChatButton();
 })();
 
 /* ============================================
@@ -5147,6 +5184,10 @@ function aurixWelcomeBack() {
 
 /* Splash completo para todos: experiencia completa en cada carga */
 async function startSplashSequence() {
+  if (window.setIntroProtocolActive) {
+    window.setIntroProtocolActive(true);
+  }
+
   showScreen(splash1);
   await speakOrWait("¿Y si aprender inglés fuera más fácil?", 3500);
 
