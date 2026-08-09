@@ -1292,6 +1292,13 @@ p {
   border: 1px solid rgba(74, 158, 255, 0.08);
 }
 
+.mp-final-es {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .mp-final .en-quote {
   display: block;
   font-size: 18px;
@@ -2827,6 +2834,33 @@ body.aurix-listening .mini-status {
   text-align: center;
 }
 
+.dna-mic-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px;
+  background: rgba(4, 7, 15, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: dnaMicIn 0.4s ease-out both;
+}
+
+.dna-mic-panel .ms-card {
+  width: min(430px, 100%);
+}
+
+.dna-mic-panel.dna-mic-done {
+  display: none;
+}
+
+@keyframes dnaMicIn {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 720px) {
   .dna2-percent {
     font-size: 24px;
@@ -3664,6 +3698,142 @@ button:not(.pulse-dot):not(#startDot) {
 
 #micCloseBtn:active {
   transform: scale(0.98);
+}
+
+/* ============================================
+   SESION 2: NIVEL 0 (SINGULAR, PLURAL Y PRONOMBRES)
+============================================ */
+
+.n0-block-es {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.n0-table {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.n0-table-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.n0-table-head span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  font-weight: 600;
+}
+
+.n0-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.n0-es {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+}
+
+.n0-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.n0-ex-es {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  margin: 6px 0 4px;
+}
+
+.n0-select option {
+  background: #0d1626;
+  color: #ffffff;
+}
+
+.n0-select.ok {
+  border-color: rgba(80, 220, 140, 0.5);
+}
+
+.n0-select.bad {
+  border-color: rgba(255, 95, 109, 0.5);
+}
+
+@media (max-width: 720px) {
+  .n0-table-head,
+  .n0-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.s6-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.s6-ans {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.n0-en {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: center;
+}
+
+.s6-vocab {
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 14px;
+}
+
+.s6-chip {
+  display: inline-block;
+  margin: 3px 4px 3px 0;
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .s6-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
 }
 
 /* ============================================
@@ -4618,6 +4788,18 @@ body.fit-overflow .ob-sub {
   padding: 9px 14px !important;
 }
 
+/* El menu unico queda oculto durante el protocolo de inicio
+   y solo se habilita al terminar el onboarding (post-ADN). */
+#aurixMenuLauncher,
+#aurixMenuDock {
+  display: none !important;
+}
+
+#aurixMenuLauncher.menu-enabled,
+#aurixMenuDock.menu-enabled {
+  display: flex !important;
+}
+
 /* La flecha del setup de mic ahora señala al menu */
 .ms-arrow {
   left: auto !important;
@@ -4689,3 +4871,10 @@ body.fit-overflow .ob-sub {
   margin-top: 10px;
   line-height: 1.6;
 }
+
+.mp-phrase-es {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 400;
+}
+

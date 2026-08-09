@@ -369,6 +369,10 @@ function renderOnboardingStep(step) {
     renderRoute(container);
   }
 
+  if (step === "mic") {
+    renderMicSetup(container);
+  }
+
   if (step === "dna") {
     renderDna(container);
   }
@@ -852,6 +856,72 @@ function renderRoute(container) {
   speakObInstruction("Elige la ruta que más te guste.", container);
 }
 
+function renderMicSetup(container) {
+  if (window.AurixMicSetup && window.AurixMicSetup.setupDone()) {
+    renderOnboardingStep("dna");
+    return;
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">AURIX OS</div>' +
+      '<h2 class="ob-title">Configura tu micrófono</h2>' +
+      '<p class="ob-sub">El micrófono es pieza clave de AURIX: con él practicarás tu pronunciación. Se configura una sola vez.</p>' +
+      '<div class="ms-steps">' +
+        '<div class="ms-step">1. Toca <b>Probar micrófono</b> y acepta el permiso.</div>' +
+        '<div class="ms-step">2. Habla: las barras deben moverse.</div>' +
+        '<div class="ms-step">3. Toca <b>Micrófono listo</b>.</div>' +
+      '</div>' +
+      '<div class="ms-bars" id="msBars">' +
+        '<span></span><span></span><span></span><span></span><span></span><span></span><span></span>' +
+      '</div>' +
+      '<div class="ms-status" id="msStatus">Esperando prueba...</div>' +
+      '<div class="ob-actions">' +
+        '<button id="msTestBtn" class="btn">🎤 Probar micrófono</button>' +
+        '<button id="msReadyBtn" class="btn" disabled>✔ Micrófono listo</button>' +
+      '</div>' +
+      '<button type="button" class="ms-skip" id="msSkip" style="background:none;border:none;padding:0;font:inherit;color:inherit;width:100%">Continuar sin micrófono</button>' +
+    '</div>';
+
+  document.getElementById("msTestBtn").addEventListener("click", function () {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.runTest();
+    }
+  });
+
+  document.getElementById("msReadyBtn").addEventListener("click", function () {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.markDone();
+      window.AurixMicSetup.stopTest();
+    }
+
+    if (typeof aurixSpeakQueued === "function") {
+      aurixSpeakQueued("Micrófono configurado correctamente. Ya puedes practicar tu acento.");
+    }
+
+    renderOnboardingStep("dna");
+  });
+
+  document.getElementById("msSkip").addEventListener("click", function () {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.stopTest();
+    }
+
+    renderOnboardingStep("dna");
+  });
+
+  if (window.AurixMicSetup) {
+    window.AurixMicSetup.checkPermissionState();
+  }
+
+  speakObInstruction(
+    "Antes de crear tu ADN, configura tu micrófono. " +
+    "Toca Probar micrófono y acepta el permiso, " +
+    "habla para que las barras se muevan y después toca Micrófono listo.",
+    container
+  );
+}
+
 function renderDna(container) {
   container.innerHTML =
     '<div class="card glass ob-card ob-center">' +
@@ -957,6 +1027,10 @@ function enQuote(text) {
 }
 
 function renderPlaceholder(container) {
+  if (typeof aurixSetMenuEnabled === "function") {
+    aurixSetMenuEnabled(true);
+  }
+
   renderMissionIntro(container);
 }
 
@@ -1896,6 +1970,41 @@ function mpBuildFullIntro() {
   return parts.join(" ");
 }
 
+function mpBuildFullIntroEs() {
+  var p = mpGetProfile();
+  var name = p.name || appState.nickname || "amigo";
+
+  var parts = [
+    "Hola.",
+    "Me llamo " + name + "."
+  ];
+
+  if (p.age) {
+    parts.push("Tengo " + p.age + " años.");
+  }
+
+  if (p.from) {
+    parts.push("Soy de " + p.from + ".");
+  }
+
+  if (p.occupationPhrase) {
+    var occ = p.occupationPhrase.toLowerCase();
+    if (occ.indexOf("work and study") > -1) parts.push("Trabajo y estudio.");
+    else if (occ.indexOf("looking for a job") > -1) parts.push("Busco trabajo.");
+    else if (occ.indexOf("study") > -1) parts.push("Estudio.");
+    else if (occ.indexOf("work") > -1) parts.push("Trabajo.");
+    else parts.push(mpEnsureSentence(p.occupationPhrase));
+  }
+
+  if (p.likeThing) {
+    parts.push("Me gusta " + p.likeThing + ".");
+  }
+
+  parts.push("Mucho gusto.");
+
+  return parts.join(" ");
+}
+
 function renderMissionPractice(container) {
   renderMissionProfileName(container);
 }
@@ -1909,7 +2018,7 @@ function renderMissionProfileName(container) {
       '<div class="badge">AURIX OS</div>' +
       '<h2 class="ob-title">¿Cómo te llamamos?</h2>' +
       '<p class="ob-sub">Vamos a presentarte en inglés.</p>' +
-      '<p class="ob-sub">Puedes decir: ' + displayEn("My name is " + (name || "Alex") + ".") + '</p>' +
+      '<p class="ob-sub">Puedes decir: ' + displayEn("My name is " + (name || "Alex") + ".") + ' (Me llamo ' + (name || "Alex") + '.)</p>' +
       '<input id="mpNameInput" class="ob-input" type="text" maxlength="24" placeholder="Tu nombre o nickname" value="' + (name || "") + '" />' +
       '<div class="ob-actions">' +
         '<button id="mpNameNext" class="btn">Continuar</button>' +
@@ -1959,7 +2068,7 @@ function renderMissionProfileAge(container) {
     '<div class="card glass ob-card">' +
       '<div class="badge">AURIX OS</div>' +
       '<h2 class="ob-title">¿Cuántos años tienes?</h2>' +
-      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I am 25 years old.") + '</p>' +
+      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I am 25 years old.") + ' (Tengo 25 años.)</p>' +
       '<div class="mp-grid">' +
         ages.map(function (item) {
           return '<button class="ob-chip mp-age-chip" data-age="' + item + '">' + item + ' años</button>';
@@ -2004,7 +2113,7 @@ function renderMissionProfileAge(container) {
     nextBtn.disabled = true;
 
     await mpSpeak(
-      "Perfecto. Puedes decir: " + mpEnQuote("I am " + ageValue + " years old."),
+      "Perfecto. Puedes decir: " + mpEnQuote("I am " + ageValue + " years old.") + ". Esto significa: tengo " + ageValue + " años.",
       "narrator"
     );
 
@@ -2013,7 +2122,8 @@ function renderMissionProfileAge(container) {
 
   mpSpeak(
     "¿Cuántos años tienes? Puedes decir: " +
-    mpEnQuote("I am " + (age || 25) + " years old."),
+    mpEnQuote("I am " + (age || 25) + " years old.") +
+    ". Esto significa: tengo " + (age || 25) + " años.",
     "narrator"
   );
 }
@@ -2027,7 +2137,7 @@ function renderMissionProfileFrom(container) {
     '<div class="card glass ob-card">' +
       '<div class="badge">AURIX OS</div>' +
       '<h2 class="ob-title">¿De dónde eres?</h2>' +
-      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I am from Mexico.") + '</p>' +
+      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I am from Mexico.") + ' (Soy de México.)</p>' +
       '<div class="mp-grid">' +
         places.map(function (item) {
           return '<button class="ob-chip mp-from-chip" data-place="' + item + '">' + item + '</button>';
@@ -2071,7 +2181,7 @@ function renderMissionProfileFrom(container) {
     nextBtn.disabled = true;
 
     await mpSpeak(
-      "Excelente. Puedes decir: " + mpEnQuote("I am from " + place + "."),
+      "Excelente. Puedes decir: " + mpEnQuote("I am from " + place + ".") + ". Esto significa: soy de " + place + ".",
       "narrator"
     );
 
@@ -2079,7 +2189,7 @@ function renderMissionProfileFrom(container) {
   });
 
   mpSpeak(
-    "¿De dónde eres? Puedes decir: " + mpEnQuote("I am from Mexico."),
+    "¿De dónde eres? Puedes decir: " + mpEnQuote("I am from Mexico.") + ". Esto significa: soy de México.",
     "narrator"
   );
 }
@@ -2099,7 +2209,7 @@ function renderMissionProfileOccupation(container) {
     '<div class="card glass ob-card">' +
       '<div class="badge">AURIX OS</div>' +
       '<h2 class="ob-title">¿Qué haces?</h2>' +
-      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I work.") + ' o ' + displayEn("I study.") + '</p>' +
+      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I work.") + ' (Trabajo) o ' + displayEn("I study.") + ' (Estudio)</p>' +
       '<div class="mp-grid">' +
         jobs.map(function (job) {
           return '<button class="ob-chip mp-job-chip" data-en="' + job.en + '">' + job.label + '<small>' + job.en + '.</small></button>';
@@ -2152,9 +2262,9 @@ function renderMissionProfileOccupation(container) {
 
   mpSpeak(
     "¿Qué haces? Puedes decir: " +
-    mpEnQuote("I work.") +
-    " o " +
-    mpEnQuote("I study."),
+    mpEnQuote("I work.") + ", yo trabajo, " +
+    "o " +
+    mpEnQuote("I study.") + ", yo estudio.",
     "narrator"
   );
 }
@@ -2164,23 +2274,23 @@ function renderMissionProfileLikes(container) {
   var likeThing = profile.likeThing || "";
 
   var likes = [
-    "music",
-    "travel",
-    "food",
-    "sports",
-    "movies",
-    "technology",
-    "learning English"
+    { en: "music", es: "Música" },
+    { en: "travel", es: "Viajar" },
+    { en: "food", es: "Comida" },
+    { en: "sports", es: "Deportes" },
+    { en: "movies", es: "Películas" },
+    { en: "technology", es: "Tecnología" },
+    { en: "learning English", es: "Aprender inglés" }
   ];
 
   container.innerHTML =
     '<div class="card glass ob-card">' +
       '<div class="badge">AURIX OS</div>' +
       '<h2 class="ob-title">¿Qué te gusta?</h2>' +
-      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I like music.") + '</p>' +
+      '<p class="ob-sub">En inglés puedes decir: ' + displayEn("I like music.") + ' (Me gusta la música.)</p>' +
       '<div class="mp-grid">' +
         likes.map(function (item) {
-          return '<button class="ob-chip mp-like-chip" data-like="' + item + '">' + item + '</button>';
+          return '<button class="ob-chip mp-like-chip" data-like="' + item.en + '">' + item.es + '<small>' + item.en + '</small></button>';
         }).join("") +
       '</div>' +
       '<input id="mpLikeInput" class="ob-input mp-input" type="text" maxlength="100" placeholder="Ej: music, travel, coffee" value="' + likeThing + '" />' +
@@ -2231,13 +2341,14 @@ function renderMissionProfileLikes(container) {
   });
 
   mpSpeak(
-    "¿Qué te gusta? Puedes decir: " + mpEnQuote("I like music."),
+    "¿Qué te gusta? Puedes decir: " + mpEnQuote("I like music.") + ". Esto significa: me gusta la música.",
     "narrator"
   );
 }
 
 function renderMissionFinalIntro(container) {
   var fullIntro = mpBuildFullIntro();
+  var fullIntroEs = mpBuildFullIntroEs();
 
   container.innerHTML =
     '<div class="card glass ob-card">' +
@@ -2246,6 +2357,9 @@ function renderMissionFinalIntro(container) {
       '<p class="ob-sub">Escucha cómo quedó tu introducción en inglés.</p>' +
       '<div class="mp-final">' +
         displayEn(fullIntro) +
+      '</div>' +
+      '<div class="mp-final mp-final-es">' +
+        escapeHtml(fullIntroEs) +
       '</div>' +
       '<div class="ob-actions">' +
         '<button id="mpListenFinal" class="ob-small-btn">Escuchar</button>' +
@@ -2262,7 +2376,7 @@ function renderMissionFinalIntro(container) {
   });
 
   mpSpeak(
-    "Escucha tu presentación completa. " + mpEnQuote(fullIntro),
+    "Escucha tu presentación completa. " + mpEnQuote(fullIntro) + ". En español: " + fullIntroEs,
     "narrator"
   );
 }
@@ -2283,14 +2397,14 @@ function renderMissionComplete(container) {
   ];
 
   var phrases = [
-    "Hello.",
-    "My name is ...",
-    "I am ... years old.",
-    "I am from ...",
-    "I work.",
-    "I study.",
-    "I like ...",
-    "Nice to meet you."
+    ["Hello.", "Hola."],
+    ["My name is ...", "Me llamo ..."],
+    ["I am ... years old.", "Tengo ... años."],
+    ["I am from ...", "Soy de ..."],
+    ["I work.", "Trabajo."],
+    ["I study.", "Estudio."],
+    ["I like ...", "Me gusta ..."],
+    ["Nice to meet you.", "Mucho gusto."]
   ];
 
   container.innerHTML =
@@ -2309,8 +2423,8 @@ function renderMissionComplete(container) {
         }).join("") +
       '</div>' +
       '<div class="mp-phrase-list">' +
-        phrases.map(function (phrase) {
-          return '<div class="mp-phrase">' + displayEn(phrase) + '</div>';
+        phrases.map(function (pair) {
+          return '<div class="mp-phrase">' + displayEn(pair[0]) + ' <span class="mp-phrase-es">(' + pair[1] + ')</span></div>';
         }).join("") +
       '</div>' +
       '<div class="ob-actions">' +
@@ -3245,7 +3359,7 @@ function renderSessionsPanel(container) {
         '</div>' +
         '<div class="ss-card ' + (s2 ? "completed" : (s1 ? "available" : "locked")) + '">' +
           '<span class="ss-badge ' + (s2 ? "done" : (s1 ? "next" : "locked")) + '">Sesión 2</span>' +
-          '<div class="ss-title">Nivel Cero: Singular y Plural</div>' +
+          '<div class="ss-title">Nivel 0: Singular, Plural y Pronombres</div>' +
           '<div class="ss-status">' + (s2 ? "Completada" : (s1 ? "Disponible" : "Bloqueada")) + '</div>' +
         '</div>' +
         '<div class="ss-card ' + (s3 ? "completed" : (s2 ? "available" : "locked")) + '">' +
@@ -3298,16 +3412,19 @@ function renderSession3Theory(container) {
           '<div class="rod-channel-title">1ra Persona</div>' +
           '<div class="rod-channel-pronouns">' + ssDisplayEn("I") + '</div>' +
           '<div class="rod-channel-verb">' + ssDisplayEn("AM") + '</div>' +
+          '<div class="n0-block-es">Yo (soy / estoy)</div>' +
         '</div>' +
         '<div class="rod-channel c2">' +
           '<div class="rod-channel-title">2das Personas</div>' +
           '<div class="rod-channel-pronouns">' + ssDisplayEn("You, We, They") + '</div>' +
           '<div class="rod-channel-verb">' + ssDisplayEn("ARE") + '</div>' +
+          '<div class="n0-block-es">Tú/ustedes · Nosotros · Ellos (son / están)</div>' +
         '</div>' +
         '<div class="rod-channel c3">' +
           '<div class="rod-channel-title">3ras Personas</div>' +
           '<div class="rod-channel-pronouns">' + ssDisplayEn("He, She, It") + '</div>' +
           '<div class="rod-channel-verb">' + ssDisplayEn("IS") + '</div>' +
+          '<div class="n0-block-es">Él · Ella · Eso (es / está)</div>' +
         '</div>' +
       '</div>' +
       '<p class="ob-sub">Regla de Oro: El verbo cambia según el canal. No hay excepciones en el presente simple.</p>' +
@@ -3319,13 +3436,13 @@ function renderSession3Theory(container) {
 }
 
 var ROD_EXERCISES = [
-  { pronoun: "I", correct: "AM" },
-  { pronoun: "She", correct: "IS" },
-  { pronoun: "They", correct: "ARE" },
-  { pronoun: "We", correct: "ARE" },
-  { pronoun: "It", correct: "IS" },
-  { pronoun: "You", correct: "ARE" },
-  { pronoun: "He", correct: "IS" }
+  { pronoun: "I", es: "yo", correct: "AM" },
+  { pronoun: "She", es: "ella", correct: "IS" },
+  { pronoun: "They", es: "ellos/ellas", correct: "ARE" },
+  { pronoun: "We", es: "nosotros", correct: "ARE" },
+  { pronoun: "It", es: "eso", correct: "IS" },
+  { pronoun: "You", es: "tú/ustedes", correct: "ARE" },
+  { pronoun: "He", es: "él", correct: "IS" }
 ];
 
 function renderSession3Exercise(container, index, score) {
@@ -3341,6 +3458,7 @@ function renderSession3Exercise(container, index, score) {
       '<h2 class="ob-title">Filtra el sujeto</h2>' +
       '<div class="se-progress">Sujeto ' + (index + 1) + ' de ' + ROD_EXERCISES.length + '</div>' +
       '<div class="rod-target">' + ssDisplayEn(ex.pronoun) + '</div>' +
+      '<div class="n0-ex-es">' + escapeHtml(ex.es) + '</div>' +
       '<p class="ob-sub" style="text-align:center;">¿A qué canal pertenece?</p>' +
       '<div class="rod-options">' +
         '<button class="rod-option-btn" data-val="AM">' + ssDisplayEn("AM") + '</button>' +
@@ -3364,9 +3482,9 @@ function renderSession3Exercise(container, index, score) {
         btns.forEach(function(b) { if(b.dataset.val === ex.correct) b.classList.add("correct"); });
       }
       
-      var msg = (isCorrect ? "Correcto. " : "Incorrecto. ") + ex.pronoun + " usa " + ex.correct + ".";
+      var msg = (isCorrect ? "Correcto. " : "Incorrecto. ") + ex.pronoun + " (" + ex.es + ") usa " + ex.correct + ".";
       document.getElementById("s3Feedback").textContent = msg;
-      await ssSpeak((isCorrect ? "Correcto. " : "Casi. ") + ssEnQuote(ex.pronoun) + " usa " + ssEnQuote(ex.correct), "narrator");
+      await ssSpeak((isCorrect ? "Correcto. " : "Casi. ") + ssEnQuote(ex.pronoun) + ", " + ex.es + ", usa " + ssEnQuote(ex.correct), "narrator");
       
       setTimeout(function() {
         renderSession3Exercise(container, index + 1, score);
@@ -3385,8 +3503,8 @@ function renderSession3Table(container, score) {
       '<p class="ob-sub">En inglés, el verbo To Be unifica Ser y Estar. La traducción depende del contexto, pero la estructura es inmutable.</p>' +
       '<div class="mp-profile-summary">' +
         '<div class="mp-profile-item"><div class="mp-profile-label">1ra Persona</div><div class="mp-profile-value">' + ssDisplayEn("I AM") + ' (Yo soy / estoy)</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">2das Personas</div><div class="mp-profile-value">' + ssDisplayEn("YOU/WE/THEY ARE") + '</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">3ras Personas</div><div class="mp-profile-value">' + ssDisplayEn("HE/SHE/IT IS") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">2das Personas</div><div class="mp-profile-value">' + ssDisplayEn("YOU/WE/THEY ARE") + ' (tú eres / nosotros somos / ellos son · están)</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">3ras Personas</div><div class="mp-profile-value">' + ssDisplayEn("HE/SHE/IT IS") + ' (él es / ella es / eso es · está)</div></div>' +
       '</div>' +
       '<div class="ob-actions"><button id="s3Finish" class="btn">Completar Sesión 3</button></div>' +
     '</div>';
@@ -3468,51 +3586,129 @@ function ssSession2Done() {
 }
 
 /* ============================================
-   SESION 2: NIVEL CERO (SINGULAR Y PLURAL)
+   SESION 2: NIVEL 0 (SINGULAR, PLURAL Y PRONOMBRES)
+   Version estandar y no ambigua:
+   - you puede ser singular o plural segun contexto
+   - bloques visuales: I / YOU-WE-THEY / HE-SHE-IT
+   - vocabulario solo autorizado
 ============================================ */
 
 var S2_EXERCISES = [
-  { word: "cat", correct: "singular" },
-  { word: "cats", correct: "plural" },
-  { word: "book", correct: "singular" },
-  { word: "books", correct: "plural" },
-  { word: "box", correct: "singular" },
-  { word: "boxes", correct: "plural" },
-  { word: "child", correct: "singular" },
-  { word: "children", correct: "plural" }
+  { word: "cat", es: "gato", correct: "singular" },
+  { word: "cats", es: "gatos", correct: "plural" },
+  { word: "book", es: "libro", correct: "singular" },
+  { word: "books", es: "libros", correct: "plural" },
+  { word: "box", es: "caja", correct: "singular" },
+  { word: "boxes", es: "cajas", correct: "plural" },
+  { word: "child", es: "niño", correct: "singular" },
+  { word: "children", es: "niños", correct: "plural" }
 ];
+
+var S2_PRONOUNS = [
+  { es: "yo", en: "I", number: "singular" },
+  { es: "tú", en: "you", number: "singular" },
+  { es: "él", en: "he", number: "singular" },
+  { es: "ella", en: "she", number: "singular" },
+  { es: "eso", en: "it", number: "singular" },
+  { es: "nosotros", en: "we", number: "plural" },
+  { es: "ustedes", en: "you", number: "plural" },
+  { es: "ellos", en: "they", number: "plural" },
+  { es: "ellas", en: "they", number: "plural" }
+];
+
+function s2Norm(t) {
+  return String(t || "")
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/[.,!?]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function renderSession2Intro(container) {
   container.innerHTML =
     '<div class="card glass ob-card">' +
       '<div class="badge">SESIÓN 2</div>' +
-      '<h2 class="ob-title">Nivel Cero: Singular y Plural</h2>' +
-      '<p class="ob-sub">Antes de los pronombres, el cimiento: saber si hablamos de una cosa o de muchas.</p>' +
+      '<h2 class="ob-title">Nivel 0: Singular, Plural y Pronombres</h2>' +
+      '<p class="ob-sub">Antes del verbo, el cimiento: saber si hablamos de una cosa o de muchas, y saber quién hace la acción.</p>' +
       '<p class="ob-sub">Cero relleno. Solo estructura.</p>' +
-      '<div class="ob-actions"><button id="s2Start" class="btn">Iniciar Nivel Cero</button></div>' +
+      '<div class="ob-actions"><button id="s2Start" class="btn">Iniciar Nivel 0</button></div>' +
     '</div>';
 
   document.getElementById("s2Start").onclick = function() { renderSession2Theory(container); };
-  ssSpeak("Sesión dos. Nivel Cero. Singular y Plural. Antes de los pronombres, el cimiento: saber si hablamos de una cosa o de muchas.", "narrator");
+  ssSpeak("Sesión dos. Nivel Cero. Singular, plural y pronombres personales. Antes del verbo, el cimiento: saber si hablamos de una cosa o de muchas, y saber quién hace la acción.", "narrator");
 }
 
 function renderSession2Theory(container) {
   container.innerHTML =
     '<div class="card glass ob-card">' +
       '<div class="badge">TEORÍA</div>' +
-      '<h2 class="ob-title">Una cosa o muchas</h2>' +
+      '<h2 class="ob-title">Uno y más de uno</h2>' +
       '<div class="mp-profile-summary">' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Singular</div><div class="mp-profile-value">' + ssDisplayEn("a cat") + ' (un gato)</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Plural</div><div class="mp-profile-value">' + ssDisplayEn("cats") + ' (gatos)</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Regla</div><div class="mp-profile-value">+ s / + es</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Singular</div><div class="mp-profile-value">' + ssDisplayEn("one house") + ' (una casa)</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Plural</div><div class="mp-profile-value">' + ssDisplayEn("two houses") + ' (dos casas)</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Singular</div><div class="mp-profile-value">' + ssDisplayEn("one car") + ' (un carro)</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Plural</div><div class="mp-profile-value">' + ssDisplayEn("two cars") + ' (dos carros)</div></div>' +
       '</div>' +
-      '<p class="ob-sub">La <strong>-s</strong> al final indica que hay más de uno. Singular se refiere a una sola cosa; plural a varias.</p>' +
-      '<p class="ob-sub">Hay irregulares como ' + ssDisplayEn("child") + ' → ' + ssDisplayEn("children") + ', que se memorizan como palabra nueva.</p>' +
-      '<div class="ob-actions"><button id="s2Next" class="btn">Practicar</button></div>' +
+      '<div class="s4-rule"><b>Singular</b> = uno. <b>Plural</b> = más de uno. La marca más común es <b>+ s / + es</b>.</div>' +
+      '<div class="s4-rule">Hay irregulares como ' + ssDisplayEn("child") + ' (niño) → ' + ssDisplayEn("children") + ' (niños), que se memorizan como palabra nueva.</div>' +
+      '<div class="ob-actions"><button id="s2Next" class="btn">Continuar</button></div>' +
     '</div>';
 
-  document.getElementById("s2Next").onclick = function() { renderSession2Exercise(container, 0, 0); };
-  ssSpeak("Una cosa o muchas. Singular es una sola cosa. Plural son varias. La marca más común del plural es la letra s. Hay irregulares como child y children.", "narrator");
+  document.getElementById("s2Next").onclick = function() { renderSession2Pronouns(container); };
+  ssSpeak("Singular es uno. Plural es más de uno. Ejemplo: una casa, one house. Dos casas, two houses. Un carro, one car. Dos carros, two cars. La marca más común del plural es la letra S. Hay irregulares como child y children.", "narrator");
+}
+
+function renderSession2Pronouns(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">TEORÍA</div>' +
+      '<h2 class="ob-title">Pronombres personales</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Yo</div><div class="mp-profile-value">' + ssDisplayEn("I") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Tú / usted / ustedes</div><div class="mp-profile-value">' + ssDisplayEn("You") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Él</div><div class="mp-profile-value">' + ssDisplayEn("He") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Ella</div><div class="mp-profile-value">' + ssDisplayEn("She") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Eso / cosa / animal</div><div class="mp-profile-value">' + ssDisplayEn("It") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Nosotros</div><div class="mp-profile-value">' + ssDisplayEn("We") + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Ellos / ellas</div><div class="mp-profile-value">' + ssDisplayEn("They") + '</div></div>' +
+      '</div>' +
+      '<div class="s4-rule">En inglés <b>you</b> puede ser singular o plural según el contexto: tú, usted, ustedes o vosotros. No se enseña que "tú" sea plural.</div>' +
+      '<div class="ob-actions"><button id="s2PronounsNext" class="btn">Continuar</button></div>' +
+    '</div>';
+
+  document.getElementById("s2PronounsNext").onclick = function() { renderSession2Blocks(container); };
+  ssSpeak("Los pronombres personales. Yo, I. Tú, you. Él, he. Ella, she. Eso, it. Nosotros, we. Ustedes, you. Ellos, they. Recuerda: en inglés, you puede ser singular o plural según el contexto.", "narrator");
+}
+
+function renderSession2Blocks(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUES</div>' +
+      '<h2 class="ob-title">Tres bloques, sin confusión</h2>' +
+      '<div class="rod-channels">' +
+        '<div class="rod-channel c1">' +
+          '<div class="rod-channel-title">Bloque I</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("I") + '</div>' +
+          '<div class="n0-block-es">Yo</div>' +
+        '</div>' +
+        '<div class="rod-channel c2">' +
+          '<div class="rod-channel-title">Bloque YOU-WE-THEY</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("You, We, They") + '</div>' +
+          '<div class="n0-block-es">Tú / usted / ustedes · Nosotros · Ellos</div>' +
+        '</div>' +
+        '<div class="rod-channel c3">' +
+          '<div class="rod-channel-title">Bloque HE-SHE-IT</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("He, She, It") + '</div>' +
+          '<div class="n0-block-es">Él · Ella · Eso</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="s4-rule">Usamos bloques para no mezclar formas. En la siguiente clase estos bloques nos ayudarán con el verbo <b>to be</b>.</div>' +
+      '<div class="ob-actions"><button id="s2BlocksNext" class="btn">Practicar</button></div>' +
+    '</div>';
+
+  document.getElementById("s2BlocksNext").onclick = function() { renderSession2Exercise(container, 0, 0); };
+  ssSpeak("Para evitar confusión, usaremos tres bloques. Bloque I: I. Bloque YOU-WE-THEY: you, we, they. Bloque HE-SHE-IT: he, she, it. Estos bloques nos preparan para el verbo to be.", "narrator");
 }
 
 function renderSession2Exercise(container, index, score) {
@@ -3529,6 +3725,7 @@ function renderSession2Exercise(container, index, score) {
       '<h2 class="ob-title">¿Singular o plural?</h2>' +
       '<div class="se-progress">Palabra ' + (index + 1) + ' de ' + S2_EXERCISES.length + '</div>' +
       '<div class="rod-target">' + ssDisplayEn(ex.word) + '</div>' +
+      '<div class="n0-ex-es">' + escapeHtml(ex.es) + '</div>' +
       '<p class="ob-sub" style="text-align:center;">¿Hablamos de una cosa o de muchas?</p>' +
       '<div class="se-options">' +
         '<button class="se-option-btn" data-val="singular">' + ssDisplayEn("Singular") + '</button>' +
@@ -3552,8 +3749,8 @@ function renderSession2Exercise(container, index, score) {
       }
 
       document.getElementById("s2Feedback").textContent =
-        (isCorrect ? "Correcto. " : "Incorrecto. ") + '"' + ex.word + '" es ' + (ex.correct === "singular" ? "singular" : "plural") + ".";
-      await ssSpeak((isCorrect ? "Correcto. " : "Casi. ") + ssEnQuote(ex.word) + " es " + ssEnQuote(ex.correct === "singular" ? "singular" : "plural"), "narrator");
+        (isCorrect ? "Correcto. " : "Incorrecto. ") + '"' + ex.word + '" (' + ex.es + ') es ' + (ex.correct === "singular" ? "singular" : "plural") + ".";
+      await ssSpeak((isCorrect ? "Correcto. " : "Casi. ") + ssEnQuote(ex.word) + ", " + ex.es + ", es " + ssEnQuote(ex.correct === "singular" ? "singular" : "plural"), "narrator");
 
       setTimeout(function() {
         renderSession2Exercise(container, index + 1, score);
@@ -3565,37 +3762,90 @@ function renderSession2Exercise(container, index, score) {
 }
 
 function renderSession2Table(container, score) {
+  var rows = "";
+
+  S2_PRONOUNS.forEach(function (item, i) {
+    rows +=
+      '<div class="n0-row">' +
+        '<div class="n0-es">' + escapeHtml(item.es) + '</div>' +
+        '<input id="s2t_en_' + i + '" class="s4-input" type="text" placeholder="En inglés..." autocomplete="off" autocapitalize="off">' +
+        '<select id="s2t_num_' + i + '" class="n0-select">' +
+          '<option value="">—</option>' +
+          '<option value="singular">Singular</option>' +
+          '<option value="plural">Plural</option>' +
+        '</select>' +
+        '<div id="s2tf_' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
   container.innerHTML =
     '<div class="card glass ob-card">' +
       '<div class="badge">CONSOLIDACIÓN</div>' +
-      '<h2 class="ob-title">Nivel Cero dominado</h2>' +
-      '<p class="ob-sub">Distinguir singular de plural es el cimiento del idioma. Sin esto no hay canales, no hay filtro, no hay verbo.</p>' +
-      '<div class="mp-profile-summary">' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Singular</div><div class="mp-profile-value">una cosa</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Plural</div><div class="mp-profile-value">más de una + s</div></div>' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Irregulares</div><div class="mp-profile-value">child → children</div></div>' +
+      '<h2 class="ob-title">Completa la tabla</h2>' +
+      '<p class="ob-sub">Escribe el pronombre en inglés y clasifica: singular o plural. Las respuestas no se muestran hasta que termines.</p>' +
+      '<div class="n0-table">' +
+        '<div class="n0-table-head"><span>Español</span><span>Inglés</span><span>Singular / Plural</span></div>' +
+        rows +
       '</div>' +
-      '<div class="ob-actions"><button id="s2Finish" class="btn">Completar Sesión 2</button></div>' +
+      '<div id="s2TableScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s2Check" class="btn">Revisar</button>' +
+        '<button id="s2Finish" class="btn" disabled>Continuar</button>' +
+      '</div>' +
     '</div>';
 
-  document.getElementById("s2Finish").onclick = function() { renderSession2Complete(container, score); };
-  ssSpeak("Consolidación. Singular es una cosa. Plural son varias. La marca más común es la s.", "narrator");
+  document.getElementById("s2Check").onclick = function () {
+    var tableScore = 0;
+
+    S2_PRONOUNS.forEach(function (item, i) {
+      var enInp = document.getElementById("s2t_en_" + i);
+      var numSel = document.getElementById("s2t_num_" + i);
+      var fb = document.getElementById("s2tf_" + i);
+
+      var enOk = s2Norm(enInp.value) === s2Norm(item.en);
+      var numOk = numSel.value === item.number;
+      var ok = enOk && numOk;
+
+      if (ok) tableScore++;
+
+      enInp.classList.remove("ok", "bad");
+      enInp.classList.add(enOk ? "ok" : "bad");
+
+      numSel.classList.remove("ok", "bad");
+      numSel.classList.add(numOk ? "ok" : "bad");
+
+      fb.textContent = ok
+        ? "Correcto."
+        : "Correcto: " + item.en + " · " + item.number;
+    });
+
+    document.getElementById("s2TableScore").textContent =
+      "Resultado: " + tableScore + "/" + S2_PRONOUNS.length;
+
+    document.getElementById("s2Finish").disabled = false;
+  };
+
+  document.getElementById("s2Finish").onclick = function () {
+    renderSession2Complete(container, score);
+  };
+
+  ssSpeak("Completa la tabla. Escribe cada pronombre en inglés y clasifícalo como singular o plural. Primero piensa la respuesta. Después revisa.", "narrator");
 }
 
 function renderSession2Complete(container, score) {
   var sessions = ssGetSessions();
   sessions.session2Completed = true;
   sessions.session2Score = score;
-  appState.lastInteraction = "Sesión 2: Nivel Cero Singular/Plural";
+  appState.lastInteraction = "Sesión 2: Nivel 0 Singular/Plural/Pronombres";
   ssSave();
 
   container.innerHTML =
     '<div class="card glass ob-card">' +
       '<div class="badge">SESIÓN 2</div>' +
-      '<h2 class="ob-title">Nivel Cero Dominado</h2>' +
-      '<p class="ob-sub">Ya distingues una cosa de muchas. Ese es el cimiento estructural.</p>' +
+      '<h2 class="ob-title">Nivel 0 Dominado</h2>' +
+      '<p class="ob-sub">Ya distingues una cosa de muchas y reconoces los pronombres en tres bloques: I / YOU-WE-THEY / HE-SHE-IT.</p>' +
       '<div class="mp-profile-summary">' +
-        '<div class="mp-profile-item"><div class="mp-profile-label">Puntaje</div><div class="mp-profile-value">' + score + '/' + S2_EXERCISES.length + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Singular/Plural</div><div class="mp-profile-value">' + score + '/' + S2_EXERCISES.length + '</div></div>' +
         '<div class="mp-profile-item"><div class="mp-profile-label">Siguiente Paso</div><div class="mp-profile-value">Sesión 3: Filtro R.O.D.</div></div>' +
       '</div>' +
       '<div class="ob-actions">' +
@@ -4656,6 +4906,33 @@ function renderDna(container) {
   window.__dna2Gen = (window.__dna2Gen || 0) + 1;
   var gen = window.__dna2Gen;
 
+  var micPending = !(window.AurixMicSetup && window.AurixMicSetup.setupDone());
+
+  var micPanel = "";
+  if (micPending) {
+    micPanel =
+      '<div class="dna-mic-panel" id="dnaMicPanel">' +
+        '<div class="ms-card">' +
+          '<div class="ms-title">🎙 Configura tu micrófono</div>' +
+          '<div class="ms-sub">Parte de tu ADN: con tu micrófono practicarás tu pronunciación. Se configura una sola vez.</div>' +
+          '<div class="ms-steps">' +
+            '<div class="ms-step">1. Toca <b>Probar micrófono</b> y acepta el permiso.</div>' +
+            '<div class="ms-step">2. Habla: las barras deben moverse.</div>' +
+            '<div class="ms-step">3. Toca <b>Micrófono listo</b>.</div>' +
+          '</div>' +
+          '<div class="ms-bars" id="msBars">' +
+            '<span></span><span></span><span></span><span></span><span></span><span></span><span></span>' +
+          '</div>' +
+          '<div class="ms-status" id="msStatus">Esperando prueba...</div>' +
+          '<div class="ms-actions">' +
+            '<button id="msTestBtn" class="btn">🎤 Probar micrófono</button>' +
+            '<button id="msReadyBtn" class="btn" disabled>✔ Micrófono listo</button>' +
+          '</div>' +
+          '<div class="ms-skip" id="msSkip">Omitir por ahora</div>' +
+        '</div>' +
+      '</div>';
+  }
+
   container.innerHTML =
     '<div class="dna2-wrap">' +
       '<canvas id="dna2Stars"></canvas>' +
@@ -4670,6 +4947,7 @@ function renderDna(container) {
         '</div>' +
       '</div>' +
       '<div class="dna2-status" id="dna2Status">ANALIZANDO TUS PREFERENCIAS</div>' +
+      micPanel +
     '</div>';
 
   var starsCanvas = document.getElementById("dna2Stars");
@@ -4866,10 +5144,73 @@ function renderDna(container) {
     requestAnimationFrame(loop);
   }
 
-  requestAnimationFrame(loop);
+  function startAnimation() {
+    requestAnimationFrame(loop);
 
-  if (typeof ssSpeak === "function") {
-    ssSpeak("Construyendo tu ADN de aprendizaje.", "narrator");
+    if (typeof ssSpeak === "function") {
+      ssSpeak("Construyendo tu ADN de aprendizaje.", "narrator");
+    }
+  }
+
+  if (micPending) {
+    runMicSetupInsideDna(startAnimation);
+  } else {
+    startAnimation();
+  }
+}
+
+/* ---------- CONFIGURACIÓN DE MICRÓFONO DENTRO DEL ADN ---------- */
+
+function runMicSetupInsideDna(onDone) {
+  var panel = document.getElementById("dnaMicPanel");
+
+  if (!panel) {
+    if (typeof onDone === "function") {
+      onDone();
+    }
+    return;
+  }
+
+  document.getElementById("msTestBtn").addEventListener("click", function () {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.runTest();
+    }
+  });
+
+  function finishSetup() {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.markDone();
+      window.AurixMicSetup.stopTest();
+    }
+
+    if (typeof aurixSpeakQueued === "function") {
+      aurixSpeakQueued("Micrófono configurado correctamente. Ya puedes practicar tu acento.");
+    }
+
+    panel.classList.add("dna-mic-done");
+
+    if (typeof onDone === "function") {
+      onDone();
+    }
+  }
+
+  function skipSetup() {
+    if (window.AurixMicSetup) {
+      window.AurixMicSetup.stopTest();
+    }
+
+    panel.classList.add("dna-mic-done");
+
+    if (typeof onDone === "function") {
+      onDone();
+    }
+  }
+
+  document.getElementById("msReadyBtn").addEventListener("click", finishSetup);
+  document.getElementById("msSkip").addEventListener("click", skipSetup);
+
+  if (window.AurixMicSetup) {
+    window.AurixMicSetup.checkPermissionState();
   }
 }
 
@@ -4890,7 +5231,7 @@ function aurixNextStepInfo() {
   }
 
   if (!sess.session2Completed) {
-    return "Tu siguiente paso: Sesión 2, Nivel Cero, Singular y Plural.";
+    return "Tu siguiente paso: Sesión 2, Nivel 0, Singular, Plural y Pronombres.";
   }
 
   if (!sess.session3Completed) {
@@ -5116,7 +5457,7 @@ function aurixNextLessonPreview() {
   if (!sess.session2Completed) {
     return {
       title: "Sesión 2",
-      preview: "Nivel Cero: uno = singular, varios = plural. House y Houses, car y cars."
+      preview: "Nivel 0: uno = singular, varios = plural, y los pronombres I, you, he, she, it, we, they."
     };
   }
 
@@ -5321,11 +5662,11 @@ function s4Norm(t) {
 }
 
 var S4_GERUND = [
-  { v: "work", a: "working" },
-  { v: "write", a: "writing" },
-  { v: "run", a: "running" },
-  { v: "study", a: "studying" },
-  { v: "swim", a: "swimming" }
+  { v: "work", a: "working", es: "trabajar" },
+  { v: "write", a: "writing", es: "escribir" },
+  { v: "run", a: "running", es: "correr" },
+  { v: "study", a: "studying", es: "estudiar" },
+  { v: "swim", a: "swimming", es: "nadar" }
 ];
 
 var S4_CONT = [
@@ -5403,7 +5744,7 @@ function renderSession4Gerund(container) {
   S4_GERUND.forEach(function (item, i) {
     rows +=
       '<div class="s4-row">' +
-        '<div class="s4-es">' + ssDisplayEn(item.v) + ' → ?</div>' +
+        '<div class="s4-es">' + ssDisplayEn(item.v) + ' (' + escapeHtml(item.es) + ') → ?</div>' +
         '<input id="s4g' + i + '" class="s4-input" type="text" placeholder="Escribe el gerundio...">' +
         '<div id="s4gf' + i + '" class="s4-answer"></div>' +
       '</div>';
@@ -5413,10 +5754,10 @@ function renderSession4Gerund(container) {
     '<div class="card glass ob-card">' +
       '<div class="badge">MORFOLOGÍA</div>' +
       '<h2 class="ob-title">El Gerundio (-ING)</h2>' +
-      '<div class="s4-rule"><b>Regla general:</b> + ING → work → working</div>' +
-      '<div class="s4-rule"><b>Termina en -E muda:</b> quita la E + ING → write → writing</div>' +
-      '<div class="s4-rule"><b>Monosílabo C-V-C:</b> duplica consonante + ING → run → running</div>' +
-      '<div class="s4-rule"><b>Consonante + Y:</b> solo + ING (sin cambios) → study → studying</div>' +
+      '<div class="s4-rule"><b>Regla general:</b> + ING → ' + ssDisplayEn("work") + ' (trabajar) → ' + ssDisplayEn("working") + '</div>' +
+      '<div class="s4-rule"><b>Termina en -E muda:</b> quita la E + ING → ' + ssDisplayEn("write") + ' (escribir) → ' + ssDisplayEn("writing") + '</div>' +
+      '<div class="s4-rule"><b>Monosílabo C-V-C:</b> duplica consonante + ING → ' + ssDisplayEn("run") + ' (correr) → ' + ssDisplayEn("running") + '</div>' +
+      '<div class="s4-rule"><b>Consonante + Y:</b> solo + ING (sin cambios) → ' + ssDisplayEn("study") + ' (estudiar) → ' + ssDisplayEn("studying") + '</div>' +
       rows +
       '<div id="s4GerundScore" class="s4-score"></div>' +
       '<div class="ob-actions">' +
@@ -5463,7 +5804,7 @@ function renderSession4Contrast(container) {
       '<h2 class="ob-title">Simple vs Continuo</h2>' +
       '<div class="s4-rule"><b>SIMPLE:</b> Sujeto + am/is/are + complemento. <b>NO lleva -ING.</b><br>' + ssDisplayEn("It is a house.") + '</div>' +
       '<div class="s4-rule"><b>CONTINUO:</b> Sujeto + am/is/are + verbo-ING. <b>SÍ lleva -ING.</b><br>' + ssDisplayEn("I am working.") + '</div>' +
-      '<div class="s4-rule"><b>3ª persona del SIMPLE:</b><br>• General: + S → He runs.<br>• Termina en O, X, S, SH, Z: + ES → He goes.<br>• Consonante + Y: Y → IES → He tries.<br>• have → has.</div>' +
+      '<div class="s4-rule"><b>3ª persona del SIMPLE:</b><br>• General: + S → ' + ssDisplayEn("He runs.") + ' (Él corre.)<br>• Termina en O, X, S, SH, Z: + ES → ' + ssDisplayEn("He goes.") + ' (Él va.)<br>• Consonante + Y: Y → IES → ' + ssDisplayEn("He tries.") + ' (Él intenta.)<br>• ' + ssDisplayEn("have") + ' (tener) → ' + ssDisplayEn("has") + '.</div>' +
       '<div class="s4-rule"><b>Regla clave:</b> en inglés el pronombre NUNCA se omite. Siempre debe estar escrito.</div>' +
       '<div class="ob-actions"><button id="s4ContrastNext" class="btn">Ir a ejercicios</button></div>' +
     '</div>';
@@ -5660,7 +6001,7 @@ function renderSessionsPanel(container) {
         '</div>' +
         '<div class="ss-card ' + (s2 ? "completed" : (s1 ? "available" : "locked")) + '">' +
           '<span class="ss-badge ' + (s2 ? "done" : (s1 ? "next" : "locked")) + '">Sesión 2</span>' +
-          '<div class="ss-title">Nivel Cero: Singular y Plural</div>' +
+          '<div class="ss-title">Nivel 0: Singular, Plural y Pronombres</div>' +
           '<div class="ss-status">' + (s2 ? "Completada" : (s1 ? "Disponible" : "Bloqueada") ) + '</div>' +
         '</div>' +
         '<div class="ss-card ' + (s3 ? "completed" : (s2 ? "available" : "locked")) + '">' +
@@ -5961,18 +6302,15 @@ function renderSessionsPanel(container) {
     }
   }, 1500);
 
-  /* Mostrar el setup en la pantalla de inicio si falta configuracion */
-  setInterval(function () {
-    var s3 = document.getElementById("splash3");
-
-    if (s3 && s3.classList.contains("active") && !setupDone()) {
-      var o = document.getElementById("micSetupOverlay");
-
-      if (!o || o.classList.contains("hidden")) {
-        showOverlay();
-      }
-    }
-  }, 600);
+  /* El setup ya no se muestra solo tras el splash:
+     ahora vive dentro del onboarding, justo antes de crear el ADN. */
+  window.AurixMicSetup = {
+    setupDone: setupDone,
+    markDone: markDone,
+    runTest: runTest,
+    stopTest: stopTest,
+    checkPermissionState: checkPermissionState
+  };
 })();
 
 /* ============================================
@@ -6584,8 +6922,12 @@ async function startActivation() {
     "renderMissionResponse",
     "renderMissionComplete",
     "renderSession2Intro",
+    "renderSession2Theory",
+    "renderSession2Pronouns",
+    "renderSession2Blocks",
     "renderSession2Teach",
     "renderSession2Exercise",
+    "renderSession2Table",
     "renderSession2Complete",
     "renderSession3Intro",
     "renderSession3Rule",
@@ -6602,7 +6944,15 @@ async function startActivation() {
     "renderSession4Contrast",
     "renderSession4ExerciseA",
     "renderSession4ExerciseB",
-    "renderSession4Complete"
+    "renderSession4Complete",
+    "renderSession6Intro",
+    "renderSession6B1",
+    "renderSession6B1Ex",
+    "renderSession6B2",
+    "renderSession6B2Ex",
+    "renderSession6B3",
+    "renderSession6B3Ex",
+    "renderSession6Complete"
   ];
 
   function argsKey(args) {
@@ -6826,6 +7176,11 @@ function ssSession5Done() {
   return Boolean(s.session5Completed);
 }
 
+function ssSession6Done() {
+  var s = ssGetSessions();
+  return Boolean(s.session6Completed);
+}
+
 var S5_EXERCISES = [
   { es: "No corro.", en: ["i do not run", "i don't run"] },
   { es: "No bailas.", en: ["you do not dance", "you don't dance"] },
@@ -6998,6 +7353,476 @@ function renderSession5Complete(container, score) {
   }
 }
 
+/* ============================================
+   SESION 6: NIVEL 1 - VERBO TO BE
+   Tres bloques internos:
+   B1 Afirmativo | B2 Negativo | B3 Interrogativo
+   Regla #9: toda palabra en ingles con su traduccion.
+============================================ */
+
+var S6_VOCAB = [
+  { en: "student", es: "estudiante" },
+  { en: "teacher", es: "maestro / maestra" },
+  { en: "citizen", es: "ciudadano / ciudadana" },
+  { en: "friend", es: "amigo / amiga" },
+  { en: "book", es: "libro" },
+  { en: "library", es: "biblioteca" },
+  { en: "class", es: "clase" },
+  { en: "campus", es: "campus" },
+  { en: "pen", es: "bolígrafo" },
+  { en: "bus", es: "autobús" },
+  { en: "city", es: "ciudad" }
+];
+
+var S6_TABLE = [
+  { es: "yo", en: "I", ans: "am" },
+  { es: "tú / ustedes", en: "you", ans: "are" },
+  { es: "nosotros", en: "we", ans: "are" },
+  { es: "ellos / ellas", en: "they", ans: "are" },
+  { es: "él", en: "he", ans: "is" },
+  { es: "ella", en: "she", ans: "is" },
+  { es: "eso", en: "it", ans: "is" }
+];
+
+var S6_EX_B1 = [
+  { es: "Yo soy un estudiante.", en: ["i am a student"] },
+  { es: "Tú eres un ciudadano.", en: ["you are a citizen"] },
+  { es: "Él es un maestro.", en: ["he is a teacher"] },
+  { es: "Ella está en la biblioteca.", en: ["she is in the library"] },
+  { es: "Eso es un libro.", en: ["it is a book"] },
+  { es: "Nosotros estamos en clase.", en: ["we are in class"] },
+  { es: "Ellos son amigos.", en: ["they are friends"] },
+  { es: "Ellas son estudiantes.", en: ["they are students"] },
+  { es: "Ustedes son ciudadanos.", en: ["you are citizens"] },
+  { es: "Yo estoy en el campus.", en: ["i am on the campus", "i am at the campus"] }
+];
+
+var S6_EX_B2 = [
+  { es: "Yo no soy un maestro.", en: ["i am not a teacher"] },
+  { es: "Tú no eres un ciudadano.", en: ["you are not a citizen"] },
+  { es: "Él no está en la biblioteca.", en: ["he is not in the library"] },
+  { es: "Ella no es una maestra.", en: ["she is not a teacher"] },
+  { es: "Eso no es un bolígrafo.", en: ["it is not a pen"] },
+  { es: "Nosotros no estamos en el autobús.", en: ["we are not on the bus"] },
+  { es: "Ellos no son maestros.", en: ["they are not teachers"] },
+  { es: "Ellas no son amigas.", en: ["they are not friends"] },
+  { es: "Ustedes no son estudiantes.", en: ["you are not students"] },
+  { es: "Yo no estoy en la ciudad.", en: ["i am not in the city"] }
+];
+
+var S6_EX_B3 = [
+  { es: "¿Eres tú un estudiante?", en: ["are you a student"] },
+  { es: "Sí, yo soy.", en: ["yes i am"] },
+  { es: "¿Es él un maestro?", en: ["is he a teacher"] },
+  { es: "No, él no es.", en: ["no he is not", "no he isn't"] },
+  { es: "¿Está ella en la biblioteca?", en: ["is she in the library"] },
+  { es: "Sí, ella está.", en: ["yes she is"] },
+  { es: "¿Son ellos amigos?", en: ["are they friends"] },
+  { es: "No, ellos no son.", en: ["no they are not", "no they aren't"] },
+  { es: "¿Estamos nosotros en clase?", en: ["are we in class"] },
+  { es: "Sí, nosotros estamos.", en: ["yes we are"] }
+];
+
+/* ---------- INTRO ---------- */
+function renderSession6Intro(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 6</div>' +
+      '<h2 class="ob-title">Nivel 1: Verbo To Be</h2>' +
+      '<p class="ob-sub">' + ssDisplayEn("to be") + ' (ser / estar): el verbo más importante del inglés.</p>' +
+      '<p class="ob-sub">Tres bloques: afirmativo, negativo e interrogativo. ~15 min cada uno.</p>' +
+      '<div class="s4-rule"><b>REGLA DE ORO #9 — CERO PALABRAS SIN TRADUCCIÓN:</b> toda palabra en inglés que veas o escuches mostrará SIEMPRE su traducción al español en pantalla, y el tutor la dirá en voz alta. Nunca se asume que ya conoces el significado.</div>' +
+      '<div class="ob-actions"><button id="s6Start" class="btn">Comenzar</button></div>' +
+    '</div>';
+
+  document.getElementById("s6Start").onclick = function () {
+    renderSession6B1(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión seis. Nivel uno: el verbo to be. Significa ser o estar. Hoy lo dominamos en tres bloques: afirmativo, negativo e interrogativo. Regla de oro número nueve: cero palabras sin traducción. Toda palabra en inglés siempre con su traducción en pantalla y en voz.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 1: AFIRMATIVO + TABLA INTERACTIVA ---------- */
+function renderSession6B1(container) {
+  var rows = "";
+
+  S6_TABLE.forEach(function (item, i) {
+    rows +=
+      '<div class="s6-row">' +
+        '<div class="n0-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="n0-en">' + escapeHtml(item.en) + '</div>' +
+        '<div class="s6-ans">' +
+          '<input id="s6tv' + i + '" class="n0-select" type="text" placeholder="am / are / is" autocomplete="off" autocapitalize="off">' +
+          '<div id="s6tvf' + i + '" class="s4-answer"></div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  var vocabChips = S6_VOCAB.slice(0, 8).map(function (v) {
+    return '<span class="ob-chip s6-chip">' + escapeHtml(v.en) + ' = ' + escapeHtml(v.es) + '</span>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 1</div>' +
+      '<h2 class="ob-title">To Be Afirmativo</h2>' +
+      '<div class="s4-rule"><b>' + ssDisplayEn("to be") + '</b> = ser / estar. Se conjuga según el bloque del Nivel 0.</div>' +
+      '<div class="s6-vocab"><b>Vocabulario de este bloque:</b><br>' + vocabChips + '</div>' +
+      '<div class="rod-channels">' +
+        '<div class="rod-channel c1">' +
+          '<div class="rod-channel-title">Bloque I</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("I") + '</div>' +
+          '<div class="rod-channel-verb">' + ssDisplayEn("am") + '</div>' +
+          '<div class="n0-block-es">Yo soy / estoy</div>' +
+        '</div>' +
+        '<div class="rod-channel c2">' +
+          '<div class="rod-channel-title">Bloque YOU-WE-THEY</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("You, We, They") + '</div>' +
+          '<div class="rod-channel-verb">' + ssDisplayEn("are") + '</div>' +
+          '<div class="n0-block-es">Tú/ustedes son · Nosotros somos · Ellos son</div>' +
+        '</div>' +
+        '<div class="rod-channel c3">' +
+          '<div class="rod-channel-title">Bloque HE-SHE-IT</div>' +
+          '<div class="rod-channel-pronouns">' + ssDisplayEn("He, She, It") + '</div>' +
+          '<div class="rod-channel-verb">' + ssDisplayEn("is") + '</div>' +
+          '<div class="n0-block-es">Él es · Ella es · Eso es</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("I am a student.") + ' (yo soy un estudiante)<br>' +
+        ssDisplayEn("You are a citizen.") + ' (tú eres un ciudadano)<br>' +
+        ssDisplayEn("He is a teacher.") + ' (él es un maestro)<br>' +
+        ssDisplayEn("She is in the library.") + ' (ella está en la biblioteca)<br>' +
+        ssDisplayEn("It is a book.") + ' (eso es un libro)<br>' +
+        ssDisplayEn("We are in class.") + ' (nosotros estamos en clase)<br>' +
+        ssDisplayEn("They are friends.") + ' (ellos son amigos)' +
+      '</div>' +
+      '<p class="ob-sub">Completa la tabla: escribe <b>am</b>, <b>are</b> o <b>is</b> para cada persona. Primero piensa, luego revisa.</p>' +
+      '<div class="n0-table">' +
+        '<div class="n0-table-head"><span>Español</span><span>Inglés</span><span>am / are / is</span></div>' +
+        rows +
+      '</div>' +
+      '<div id="s6TableScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s6Check" class="btn">Revisar</button>' +
+        '<button id="s6B1Next" class="btn" disabled>Continuar a ejercicios</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s6Check").onclick = function () {
+    var tableScore = 0;
+
+    S6_TABLE.forEach(function (item, i) {
+      var inp = document.getElementById("s6tv" + i);
+      var fb = document.getElementById("s6tvf" + i);
+      var ok = s4Norm(inp.value) === item.ans;
+
+      if (ok) tableScore++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.ans + ".";
+    });
+
+    window.__s6score = (window.__s6score || 0) + tableScore;
+
+    document.getElementById("s6TableScore").textContent =
+      "Resultado: " + tableScore + "/" + S6_TABLE.length;
+
+    document.getElementById("s6B1Next").disabled = false;
+  };
+
+  document.getElementById("s6B1Next").onclick = function () {
+    renderSession6B1Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque uno, afirmativo. El verbo to be significa ser o estar. I usa am. You, we, they usan are. He, she, it usan is. Ejemplos: I am a student, yo soy un estudiante. You are a citizen, tú eres un ciudadano. He is a teacher, él es un maestro. Completa la tabla con am, are o is.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 1: EJERCICIOS DE TRADUCCION ---------- */
+function renderSession6B1Ex(container) {
+  var rows = "";
+
+  S6_EX_B1.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s6b1e' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+        '<div id="s6b1f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 1 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Traduce al inglés</h2>' +
+      '<p class="ob-sub">Traduce cada oración usando el verbo to be. Recuerda el bloque de cada persona.</p>' +
+      rows +
+      '<div id="s6b1Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s6b1Check" class="btn">Revisar</button>' +
+        '<button id="s6b1Next" class="btn" disabled>Continuar a Negativo</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s6b1Check").onclick = function () {
+    var score = 0;
+
+    S6_EX_B1.forEach(function (item, i) {
+      var inp = document.getElementById("s6b1e" + i);
+      var fb = document.getElementById("s6b1f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s6score = (window.__s6score || 0) + score;
+
+    document.getElementById("s6b1Score").textContent =
+      "Resultado: " + score + "/" + S6_EX_B1.length;
+
+    document.getElementById("s6b1Next").disabled = false;
+  };
+
+  document.getElementById("s6b1Next").onclick = function () {
+    renderSession6B2(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Diez oraciones para traducir al inglés. Recuerda: I am, you are, he is, she is, it is, we are, they are. Ejemplo: yo soy un estudiante, I am a student.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 2: NEGATIVO ---------- */
+function renderSession6B2(container) {
+  var vocabChips = S6_VOCAB.slice(8, 11).map(function (v) {
+    return '<span class="ob-chip s6-chip">' + escapeHtml(v.en) + ' = ' + escapeHtml(v.es) + '</span>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 2</div>' +
+      '<h2 class="ob-title">To Be Negativo</h2>' +
+      '<div class="s6-vocab"><b>Vocabulario de este bloque:</b><br>' + vocabChips + '</div>' +
+      '<div class="s4-rule"><b>Regla de oro:</b> para negar, la palabra ' + ssDisplayEn("not") + ' (no) va justo después del auxiliar.</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("I am not a teacher.") + ' (yo no soy un maestro)<br>' +
+        ssDisplayEn("You are not a citizen.") + ' (tú no eres un ciudadano)<br>' +
+        ssDisplayEn("He is not in the library.") + ' (él no está en la biblioteca)<br>' +
+        ssDisplayEn("It is not a pen.") + ' (eso no es un bolígrafo)<br>' +
+        ssDisplayEn("They are not on the bus.") + ' (ellos no están en el autobús)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Contracciones:</b> ' + ssDisplayEn("isn't") + ' (no es / no está) · ' + ssDisplayEn("aren't") + ' (no eres / no son).</div>' +
+      '<div class="ob-actions"><button id="s6B2Next" class="btn">Ir a ejercicios</button></div>' +
+    '</div>';
+
+  document.getElementById("s6B2Next").onclick = function () {
+    renderSession6B2Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque dos, negativo. Para negar, la palabra not va después del auxiliar. I am not, yo no soy. You are not, tú no eres. He is not, él no es. Las contracciones: isn't, aren't. Ejemplo: It is not a pen, eso no es un bolígrafo.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 2: EJERCICIOS ---------- */
+function renderSession6B2Ex(container) {
+  var rows = "";
+
+  S6_EX_B2.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s6b2e' + i + '" class="s4-input" type="text" placeholder="Escribe la negación en inglés...">' +
+        '<div id="s6b2f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 2 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Niega en inglés</h2>' +
+      '<p class="ob-sub">Traduce cada oración en negativo. "not" siempre después del auxiliar.</p>' +
+      rows +
+      '<div id="s6b2Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s6b2Check" class="btn">Revisar</button>' +
+        '<button id="s6b2Next" class="btn" disabled>Continuar a Interrogativo</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s6b2Check").onclick = function () {
+    var score = 0;
+
+    S6_EX_B2.forEach(function (item, i) {
+      var inp = document.getElementById("s6b2e" + i);
+      var fb = document.getElementById("s6b2f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s6score = (window.__s6score || 0) + score;
+
+    document.getElementById("s6b2Score").textContent =
+      "Resultado: " + score + "/" + S6_EX_B2.length;
+
+    document.getElementById("s6b2Next").disabled = false;
+  };
+
+  document.getElementById("s6b2Next").onclick = function () {
+    renderSession6B3(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Diez oraciones negativas para traducir al inglés. Recuerda: not después del auxiliar. Ejemplo: yo no soy un maestro, I am not a teacher.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 3: INTERROGATIVO ---------- */
+function renderSession6B3(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 3</div>' +
+      '<h2 class="ob-title">To Be Interrogativo</h2>' +
+      '<div class="s4-rule"><b>Regla:</b> el auxiliar va <b>antes</b> del pronombre. Así de simple.</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("Am I?") + ' (¿soy yo? / ¿estoy yo?)<br>' +
+        ssDisplayEn("Are you?") + ' (¿eres tú? / ¿son ustedes?)<br>' +
+        ssDisplayEn("Is he?") + ' (¿es él?)<br>' +
+        ssDisplayEn("Is she?") + ' (¿es ella?)<br>' +
+        ssDisplayEn("Is it?") + ' (¿es eso?)<br>' +
+        ssDisplayEn("Are we?") + ' (¿somos nosotros?)<br>' +
+        ssDisplayEn("Are they?") + ' (¿son ellos?)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Respuestas cortas:</b><br>' +
+        ssDisplayEn("Yes, I am.") + ' (sí, lo soy) · ' + ssDisplayEn("No, I am not.") + ' (no, no lo soy)<br>' +
+        ssDisplayEn("Yes, they are.") + ' (sí, lo son) · ' + ssDisplayEn("No, they are not.") + ' (no, no lo son)' +
+      '</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("Are you a student?") + ' (¿eres tú un estudiante?) → ' + ssDisplayEn("Yes, I am.") + ' (sí, lo soy)<br>' +
+        ssDisplayEn("Is he a teacher?") + ' (¿es él un maestro?) → ' + ssDisplayEn("No, he is not.") + ' (no, él no es)' +
+      '</div>' +
+      '<div class="ob-actions"><button id="s6B3Next" class="btn">Ir a ejercicios</button></div>' +
+    '</div>';
+
+  document.getElementById("s6B3Next").onclick = function () {
+    renderSession6B3Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque tres, interrogativo. El auxiliar va antes del pronombre: Am I, are you, is he. Respuestas cortas: yes, I am; no, he is not. Ejemplo: Are you a student? ¿eres tú un estudiante?", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 3: EJERCICIOS ---------- */
+function renderSession6B3Ex(container) {
+  var rows = "";
+
+  S6_EX_B3.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s6b3e' + i + '" class="s4-input" type="text" placeholder="Escribe la pregunta o respuesta en inglés...">' +
+        '<div id="s6b3f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 3 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Pregunta y responde</h2>' +
+      '<p class="ob-sub">Traduce cada pregunta o respuesta corta. El auxiliar va antes del pronombre.</p>' +
+      rows +
+      '<div id="s6b3Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s6b3Check" class="btn">Revisar</button>' +
+        '<button id="s6b3Next" class="btn" disabled>Completar sesión</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s6b3Check").onclick = function () {
+    var score = 0;
+
+    S6_EX_B3.forEach(function (item, i) {
+      var inp = document.getElementById("s6b3e" + i);
+      var fb = document.getElementById("s6b3f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s6score = (window.__s6score || 0) + score;
+
+    document.getElementById("s6b3Score").textContent =
+      "Resultado: " + score + "/" + S6_EX_B3.length;
+
+    document.getElementById("s6b3Next").disabled = false;
+  };
+
+  document.getElementById("s6b3Next").onclick = function () {
+    renderSession6Complete(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Diez preguntas y respuestas para traducir al inglés. Recuerda: el auxiliar va antes del pronombre. Ejemplo: ¿eres tú un estudiante? Are you a student?", "narrator");
+  }
+}
+
+/* ---------- COMPLETAR ---------- */
+function renderSession6Complete(container) {
+  var s = ssGetSessions();
+  var totalScore = window.__s6score || 0;
+
+  s.session6Completed = true;
+  s.session6Score = totalScore;
+
+  if (typeof appState !== "undefined") {
+    appState.lastInteraction = "Sesión 6: Nivel 1 Verbo To Be";
+  }
+
+  ssSave();
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 6</div>' +
+      '<h2 class="ob-title">Nivel 1 completado</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">To Be</div><div class="mp-profile-value">' + totalScore + '/27</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Dominado</div><div class="mp-profile-value">Afirmativo · Negativo · Interrogativo</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Ya conjugas el verbo to be en los tres modos. Regla #9 aplicada: todo inglés siempre con su traducción.</p>' +
+      '<div class="ob-actions"><button id="s6Back" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("s6Back").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión seis completada. El verbo to be en afirmativo, negativo e interrogativo. " + ssEnQuote("Excellent work."), "narrator");
+  }
+}
+
 /* ---------- PANEL ACTUALIZADO: 5 SESIONES ---------- */
 function renderSessionsPanel(container) {
   var s1 = ssSession1Done();
@@ -7030,7 +7855,7 @@ function renderSessionsPanel(container) {
         '</div>' +
         '<div class="ss-card ' + (s2 ? "completed" : (s1 ? "available" : "locked")) + '">' +
           '<span class="ss-badge ' + (s2 ? "done" : (s1 ? "next" : "locked")) + '">Sesión 2</span>' +
-          '<div class="ss-title">Nivel Cero: Singular y Plural</div>' +
+          '<div class="ss-title">Nivel 0: Singular, Plural y Pronombres</div>' +
           '<div class="ss-status">' + (s2 ? "Completada" : (s1 ? "Disponible" : "Bloqueada")) + '</div>' +
         '</div>' +
         '<div class="ss-card ' + (s3 ? "completed" : (s2 ? "available" : "locked")) + '">' +
@@ -7090,7 +7915,7 @@ function aurixNextLessonPreview() {
     return { title: "Sesión 1", preview: "Tu primera conversación: saludos y presentación en inglés." };
   }
   if (!sess.session2Completed) {
-    return { title: "Sesión 2", preview: "Nivel Cero: uno = singular, varios = plural. House y Houses, car y cars." };
+    return { title: "Sesión 2", preview: "Nivel 0: uno = singular, varios = plural, y los pronombres I, you, he, she, it, we, they." };
   }
   if (!sess.session3Completed) {
     return { title: "Sesión 3", preview: "Filtro Maestro R.O.D.: I usa AM; You, We, They usan ARE; He, She, It usan IS." };
@@ -7304,8 +8129,12 @@ function aurixNextLessonPreview() {
   /* Demas pantallas: usar las frases de la pantalla */
   [
     "renderSession2Intro",
+    "renderSession2Theory",
+    "renderSession2Pronouns",
+    "renderSession2Blocks",
     "renderSession2Teach",
     "renderSession2Exercise",
+    "renderSession2Table",
     "renderSession2Complete",
     "renderSession4Intro",
     "renderSession4Rule",
@@ -7314,6 +8143,14 @@ function aurixNextLessonPreview() {
     "renderSession4ExerciseA",
     "renderSession4ExerciseB",
     "renderSession4Complete",
+    "renderSession6Intro",
+    "renderSession6B1",
+    "renderSession6B1Ex",
+    "renderSession6B2",
+    "renderSession6B2Ex",
+    "renderSession6B3",
+    "renderSession6B3Ex",
+    "renderSession6Complete",
     "renderSessionsPanel"
   ].forEach(function (n) {
     wrapSet(n, null);
@@ -7544,11 +8381,16 @@ function aurixNextLessonPreview() {
 ============================================ */
 
 function renderSessionsPanel(container) {
+  if (typeof aurixSetMenuEnabled === "function") {
+    aurixSetMenuEnabled(true);
+  }
+
   var s1 = ssSession1Done();
   var s2 = ssSession2Done();
   var s3 = ssSession3Done();
   var s4 = ssSession4Done();
   var s5 = ssSession5Done();
+  var s6 = ssSession6Done();
 
   var done = 0;
   if (s1) done++;
@@ -7556,8 +8398,9 @@ function renderSessionsPanel(container) {
   if (s3) done++;
   if (s4) done++;
   if (s5) done++;
+  if (s6) done++;
 
-  var progress = Math.round((done / 5) * 100);
+  var progress = Math.round((done / 6) * 100);
 
   function cardHTML(num, completed, unlocked, isNext, title) {
     var cardCls = completed ? "completed" : (unlocked ? "available" : "locked");
@@ -7584,13 +8427,14 @@ function renderSessionsPanel(container) {
       '<h2 class="ob-title">Panel de sesiones</h2>' +
       '<p class="ob-sub">Toca una tarjeta para entrar a su sesión.</p>' +
       '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
-      '<p class="ss-status">Progreso: ' + done + '/5 sesiones</p>' +
+      '<p class="ss-status">Progreso: ' + done + '/6 sesiones</p>' +
       '<div class="ss-grid">' +
         cardHTML(1, s1, true, !s1, "Primera conversación") +
-        cardHTML(2, s2, s1, !s2 && s1, "Nivel Cero: Singular y Plural") +
+        cardHTML(2, s2, s1, !s2 && s1, "Nivel 0: Singular, Plural y Pronombres") +
         cardHTML(3, s3, s2, !s3 && s2, "Filtro Maestro R.O.D.") +
         cardHTML(4, s4, s3, !s4 && s3, "Presente Simple vs Continuo") +
         cardHTML(5, s5, s4, !s5 && s4, "Negación y Verbos Auxiliares") +
+        cardHTML(6, s6, s5, !s6 && s5, "Nivel 1: Verbo To Be") +
       '</div>' +
     '</div>';
 
@@ -7630,9 +8474,10 @@ function renderSessionsPanel(container) {
   bind(3, s2, function () { renderSession3Intro(container); });
   bind(4, s3, function () { renderSession4Intro(container); });
   bind(5, s4, function () { renderSession5Intro(container); });
+  bind(6, s5, function () { renderSession6Intro(container); });
 
   if (typeof ssSpeak === "function") {
-    ssSpeak("Panel de sesiones. Progreso: " + done + " de 5. Toca una tarjeta para entrar.", "narrator");
+    ssSpeak("Panel de sesiones. Progreso: " + done + " de 6. Toca una tarjeta para entrar.", "narrator");
   }
 }
 
@@ -8496,6 +9341,17 @@ function renderSessionsPanel(container) {
     else disarm();
   }
 
+  /* El menu solo aparece tras el protocolo de inicio (post-ADN) */
+  function setEnabled(enabled) {
+    var d = dock();
+    var l = launcher();
+
+    if (d) d.classList.toggle("menu-enabled", enabled);
+    if (l) l.classList.toggle("menu-enabled", enabled);
+  }
+
+  window.aurixSetMenuEnabled = setEnabled;
+
   function init() {
     if (document.getElementById("aurixMenuLauncher")) return;
 
@@ -8509,6 +9365,8 @@ function renderSessionsPanel(container) {
     l.innerHTML = "☰";
     l.setAttribute("aria-label", "Menú");
     document.body.appendChild(l);
+
+    setEnabled(false);
 
     l.addEventListener("click", function (e) {
       e.stopPropagation();
