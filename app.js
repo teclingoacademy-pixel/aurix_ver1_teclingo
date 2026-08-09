@@ -97,6 +97,32 @@ async function speakOrWait(text, fallbackMs) {
   }
 }
 
+function speakObInstruction(raw, container, role) {
+  role = role || "narrator";
+
+  const buttons = container
+    ? Array.prototype.slice.call(container.querySelectorAll("button"))
+    : [];
+  const prevDisabled = buttons.map(function (btn) {
+    return btn.disabled;
+  });
+
+  buttons.forEach(function (btn) {
+    btn.disabled = true;
+  });
+
+  const speaking = window.AurixTTS
+    ? window.AurixTTS.speakRichText(raw, role)
+    : Promise.resolve();
+
+  return Promise.resolve(speaking).then(function () {
+    buttons.forEach(function (btn, index) {
+      if (!btn.isConnected) return;
+      btn.disabled = prevDisabled[index];
+    });
+  });
+}
+
 function sanitizeName(text) {
   return String(text || "")
     .replace(/[<>\"'*]/g, "")
@@ -151,15 +177,20 @@ async function startSplashSequence() {
 function playIntro(onDone) {
   showScreen(videoSplash);
 
-  introVideo.muted = true;
   introVideo.currentTime = 0;
 
   introVideo.onended = function () {
     if (typeof onDone === "function") onDone();
   };
 
+  introVideo.muted = false;
   introVideo.play().catch(function () {
-    if (typeof onDone === "function") onDone();
+    introVideo.muted = true;
+    introVideo.currentTime = 0;
+
+    introVideo.play().catch(function () {
+      if (typeof onDone === "function") onDone();
+    });
   });
 }
 
@@ -169,10 +200,13 @@ function enableIntroAudio() {
   if (!videoSplash.classList.contains("active")) return;
 
   introAudioEnabled = true;
-  introVideo.muted = false;
-  introVideo.currentTime = 0;
 
-  introVideo.play().catch(function () {});
+  if (introVideo.muted) {
+    introVideo.muted = false;
+    introVideo.currentTime = 0;
+
+    introVideo.play().catch(function () {});
+  }
 }
 
 function setupIntroAudio() {
@@ -379,9 +413,7 @@ function renderNickname(container) {
     renderOnboardingStep("goal");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("¿Cómo quieres que te llame tu coach?", "narrator");
-  }
+  speakObInstruction("¿Cómo quieres que te llame tu coach?", container);
 
   input.focus();
 }
@@ -458,9 +490,7 @@ function renderGoal(container) {
     renderOnboardingStep("fasttrackWarning");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("¿Para qué quieres aprender inglés?", "narrator");
-  }
+  speakObInstruction("¿Para qué quieres aprender inglés?", container);
 }
 
 function renderFastTrackWarning(container) {
@@ -482,17 +512,15 @@ function renderFastTrackWarning(container) {
     renderOnboardingStep("level");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText(
-      "Esta comprobación dura 2 minutos. " +
-      "No es un examen para aprobar ni reprobar. " +
-      "Sirve para ubicarte y que tu coach pueda ayudarte mejor. " +
-      "Intenta ser honesto. " +
-      "Si respondes muy alto, el contenido puede ser difícil. " +
-      "Si respondes muy bajo, puede ser aburrido.",
-      "narrator"
-    );
-  }
+  speakObInstruction(
+    "Esta comprobación dura 2 minutos. " +
+    "No es un examen para aprobar ni reprobar. " +
+    "Sirve para ubicarte y que tu coach pueda ayudarte mejor. " +
+    "Intenta ser honesto. " +
+    "Si respondes muy alto, el contenido puede ser difícil. " +
+    "Si respondes muy bajo, puede ser aburrido.",
+    container
+  );
 }
 
 function renderLevel(container) {
@@ -583,9 +611,7 @@ function renderLevel(container) {
     renderOnboardingStep("skills");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("¿Qué texto entiendes mejor?", "narrator");
-  }
+  speakObInstruction("¿Qué texto entiendes mejor?", container);
 }
 
 function renderSkills(container) {
@@ -670,9 +696,7 @@ function renderSkills(container) {
     renderOnboardingStep("time");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("Ahora califica del 1 al 10.", "narrator");
-  }
+  speakObInstruction("Ahora califica del 1 al 10.", container);
 }
 
 function renderTime(container) {
@@ -747,9 +771,7 @@ function renderTime(container) {
     renderOnboardingStep("route");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("¿Cuánto tiempo realista puedes dedicar por día?", "narrator");
-  }
+  speakObInstruction("¿Cuánto tiempo realista puedes dedicar por día?", container);
 }
 
 function renderRoute(container) {
@@ -823,9 +845,7 @@ function renderRoute(container) {
     renderOnboardingStep("dna");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText("Elige la ruta que más te guste.", "narrator");
-  }
+  speakObInstruction("Elige la ruta que más te guste.", container);
 }
 
 function renderDna(container) {
@@ -909,17 +929,15 @@ function renderWelcome(container) {
     renderOnboardingStep("placeholder");
   });
 
-  if (window.AurixTTS) {
-    window.AurixTTS.speakRichText(
-      "Tu ADN de aprendizaje está listo. " +
-      "Meta: " + (appState.goalLabel || "Sin definir") + ". " +
-      "Nivel provisional: " + (appState.level || "Sin definir") + ". " +
-      "Tiempo diario: " + (appState.minutes ? appState.minutes + " minutos" : "Sin definir") + ". " +
-      "Ruta: " + (appState.routeLabel || "Sin definir") + ". " +
-      '**"Let us start."**',
-      "narrator"
-    );
-  }
+  speakObInstruction(
+    "Tu ADN de aprendizaje está listo. " +
+    "Meta: " + (appState.goalLabel || "Sin definir") + ". " +
+    "Nivel provisional: " + (appState.level || "Sin definir") + ". " +
+    "Tiempo diario: " + (appState.minutes ? appState.minutes + " minutos" : "Sin definir") + ". " +
+    "Ruta: " + (appState.routeLabel || "Sin definir") + ". " +
+    '**"Let us start."**',
+    container
+  );
 }
 
 /* ============================================
@@ -5127,13 +5145,8 @@ function aurixWelcomeBack() {
   }
 }
 
-/* Sin intro para quien regresa: directo al punto */
+/* Splash completo para todos: experiencia completa en cada carga */
 async function startSplashSequence() {
-  if (aurixIsReturningUser()) {
-    showScreen(document.getElementById("splash3"));
-    return;
-  }
-
   showScreen(splash1);
   await speakOrWait("¿Y si aprender inglés fuera más fácil?", 3500);
 
@@ -5193,23 +5206,15 @@ function enterOnboarding() {
   renderOnboardingStep("nickname");
 }
 
-/* Ruta inicial: quien regresa cae directo en el punto */
+/* Ruta inicial: el splash completo se reproduce para todos (video + 3 textos).
+   Quien tiene progreso llega directo a su panel después del punto. */
+
 (function () {
   if (window.__aurixSkipIntroInjected) {
     return;
   }
 
   window.__aurixSkipIntroInjected = true;
-
-  setTimeout(function () {
-    if (aurixIsReturningUser()) {
-      var dotScreen = document.getElementById("splash3");
-
-      if (dotScreen && typeof showScreen === "function") {
-        showScreen(dotScreen);
-      }
-    }
-  }, 60);
 })();
 
 /* ============================================
