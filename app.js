@@ -1691,6 +1691,68 @@ startExperience();
     overlay.classList.toggle("hidden", on);
   }
 
+  function hideAllPopupsAndScreens() {
+    var targets = [
+      ".mic-modal",
+      ".ms-overlay",
+      "#micSetupOverlay",
+      "#aurix-settings",
+      ".ss-toast",
+      ".pr-record-toast",
+      ".wb-banner"
+    ];
+
+    for (var t = 0; t < targets.length; t++) {
+      var nodes = document.querySelectorAll(targets[t]);
+
+      for (var i = 0; i < nodes.length; i++) {
+        nodes[i].classList.add("hidden");
+      }
+    }
+
+    var onboarding = document.getElementById("onboardingScreen");
+
+    if (onboarding) {
+      onboarding.innerHTML = "";
+    }
+
+    var dock = document.getElementById("aurixMenuDock");
+    var launcher = document.getElementById("aurixMenuLauncher");
+
+    if (dock) {
+      dock.classList.remove("open");
+    }
+
+    if (launcher) {
+      launcher.classList.remove("open");
+      launcher.innerHTML = "☰";
+    }
+
+    if (window.aurixSetMenuEnabled) {
+      window.aurixSetMenuEnabled(false);
+    }
+  }
+
+  function aurixMenuFeedback(message) {
+    var toast = document.getElementById("aurixMenuFeedback");
+
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "aurixMenuFeedback";
+      toast.className = "aurix-menu-feedback";
+      toast.setAttribute("role", "status");
+      document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.classList.add("show");
+
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(function () {
+      toast.classList.remove("show");
+    }, 2400);
+  }
+
   async function powerOff() {
     if (!isPowerOn()) {
       return;
@@ -1720,11 +1782,19 @@ startExperience();
       }
     }
 
+    if (window.aurixStopAllMics) {
+      window.aurixStopAllMics();
+    }
+
+    hideAllPopupsAndScreens();
+
     updatePowerUI();
 
     if (window.AurixTTS) {
       window.AurixTTS.cancel();
     }
+
+    aurixMenuFeedback("AURIX apagado");
 
     var overlay = document.getElementById("aurixOffOverlay");
 
@@ -1793,6 +1863,8 @@ startExperience();
     if (typeof startSplashSequence === "function") {
       startSplashSequence();
     }
+
+    aurixMenuFeedback(restart ? "AURIX reiniciado" : "AURIX encendido");
   }
 
   if (document.readyState === "loading") {
@@ -2928,6 +3000,10 @@ function renderMissionDashboard(container) {
       analyser = null;
     }
 
+    if (window.aurixReleaseAudioInputs) {
+      window.aurixReleaseAudioInputs();
+    }
+
     resetBars();
 
     var recordBtn = document.getElementById("micRecordBtn");
@@ -3211,6 +3287,10 @@ function renderMissionDashboard(container) {
       ".mic-modal, " +
       ".mic-target, " +
       ".mp-final, " +
+      ".rod-channel, " +
+      ".s4-rule, " +
+      ".n0-table, " +
+      ".n0-row, " +
       "button, " +
       ".ob-actions, " +
       ".ob-chip, " +
@@ -4450,6 +4530,10 @@ function renderSession2Complete(container, score) {
       analyser = null;
     }
 
+    if (window.aurixReleaseAudioInputs) {
+      window.aurixReleaseAudioInputs();
+    }
+
     document.body.classList.remove("aurix-listening");
 
     document.querySelectorAll(".aurix-orb, .mini-orb").forEach(function (orb) {
@@ -4559,6 +4643,10 @@ function renderSession2Complete(container, score) {
 
     window.__aurixActiveStreams = [];
 
+    if (window.aurixReleaseAudioInputs) {
+      window.aurixReleaseAudioInputs();
+    }
+
     (window.__aurixSRInstances || []).slice().forEach(function (inst) {
       try {
         inst.onresult = null;
@@ -4571,6 +4659,14 @@ function renderSession2Complete(container, score) {
     });
 
     window.__aurixSRInstances = [];
+
+    if (window.AurixVoice && typeof window.AurixVoice.stop === "function") {
+      window.AurixVoice.stop();
+    }
+
+    if (window.__aurixStopVoiceWatch) {
+      window.__aurixStopVoiceWatch();
+    }
   };
 
   /* Cerrar microfono al salir de la app / pestaña (iOS Safari) */
@@ -4654,6 +4750,10 @@ function renderSession2Complete(container, score) {
       }
 
       monitor = null;
+    }
+
+    if (window.aurixReleaseAudioInputs) {
+      window.aurixReleaseAudioInputs();
     }
   }
 
@@ -4906,6 +5006,8 @@ function renderDna(container) {
   window.__dna2Gen = (window.__dna2Gen || 0) + 1;
   var gen = window.__dna2Gen;
 
+  document.body.classList.add("dna-active");
+
   var micPending = !(window.AurixMicSetup && window.AurixMicSetup.setupDone());
 
   var micPanel = "";
@@ -4936,6 +5038,7 @@ function renderDna(container) {
   container.innerHTML =
     '<div class="dna2-wrap">' +
       '<canvas id="dna2Stars"></canvas>' +
+      '<div class="dna2-halo"></div>' +
       '<div class="dna2-core">' +
         '<div class="dna2-ring-wrap">' +
           '<canvas id="dna2Helix"></canvas>' +
@@ -5018,7 +5121,7 @@ function renderDna(container) {
 
     for (var i = 0; i < stars.length; i++) {
       var st = stars[i];
-      var a = 0.25 + 0.55 * Math.abs(Math.sin(st.tw + t * 0.001 * st.sp));
+      var a = 0.1 + 0.2 * Math.abs(Math.sin(st.tw + t * 0.001 * st.sp));
 
       ctx.globalAlpha = a;
       ctx.fillStyle = "#ffffff";
@@ -5132,6 +5235,8 @@ function renderDna(container) {
         if (window.__dna2Gen !== gen) {
           return;
         }
+
+        document.body.classList.remove("dna-active");
 
         if (typeof renderOnboardingStep === "function") {
           renderOnboardingStep("welcome");
@@ -5269,7 +5374,8 @@ function aurixSpeakQueued(text) {
     return;
   }
 
-  var u = new SpeechSynthesisUtterance(text);
+  var spokenText = window.aurixPronounce ? window.aurixPronounce(text) : text;
+  var u = new SpeechSynthesisUtterance(spokenText);
   u.lang = "es-MX";
   u.rate = 1;
   u.pitch = 0.95;
@@ -6277,6 +6383,10 @@ function renderSessionsPanel(container) {
       testCtx = null;
     }
 
+    if (window.aurixReleaseAudioInputs) {
+      window.aurixReleaseAudioInputs();
+    }
+
     document.querySelectorAll("#msBars span").forEach(function (b) {
       b.style.height = "8%";
     });
@@ -6386,6 +6496,38 @@ function renderSessionsPanel(container) {
     window.webkitAudioContext = SharedAC;
   }
 
+  /* ------------------------------------------
+     Rastreo de fuentes de microfono conectadas
+     (desconectarlas libera el indicador en iOS)
+  ------------------------------------------ */
+  window.__aurixMediaSources = window.__aurixMediaSources || [];
+
+  if (BaseAC && BaseAC.prototype && BaseAC.prototype.createMediaStreamSource && !window.__aurixSrcPatched) {
+    window.__aurixSrcPatched = true;
+
+    var origCreateSource = BaseAC.prototype.createMediaStreamSource;
+
+    BaseAC.prototype.createMediaStreamSource = function (stream) {
+      var src = origCreateSource.call(this, stream);
+
+      window.__aurixMediaSources.push(src);
+
+      return src;
+    };
+  }
+
+  window.aurixReleaseAudioInputs = function () {
+    (window.__aurixMediaSources || []).slice().forEach(function (src) {
+      try {
+        src.disconnect();
+      } catch (e) {
+        // Ignorar.
+      }
+    });
+
+    window.__aurixMediaSources = [];
+  };
+
   /* 3) Vigilante de voz para puntaje fallback */
   var watch = { raf: 0, voiced: 0, total: 0, active: false };
 
@@ -6396,6 +6538,8 @@ function renderSessionsPanel(container) {
     }
     watch.raf = 0;
   }
+
+  window.__aurixStopVoiceWatch = stopVoiceWatch;
 
   function startVoiceWatch() {
     stopVoiceWatch();
@@ -6952,7 +7096,15 @@ async function startActivation() {
     "renderSession6B2Ex",
     "renderSession6B3",
     "renderSession6B3Ex",
-    "renderSession6Complete"
+    "renderSession6Complete",
+    "renderSession7Intro",
+    "renderSession7B7",
+    "renderSession7B7Ex",
+    "renderSession7B8",
+    "renderSession7B8Ex",
+    "renderSession7B9",
+    "renderSession7B9Ex",
+    "renderSession7Complete"
   ];
 
   function argsKey(args) {
@@ -7179,6 +7331,11 @@ function ssSession5Done() {
 function ssSession6Done() {
   var s = ssGetSessions();
   return Boolean(s.session6Completed);
+}
+
+function ssSession7Done() {
+  var s = ssGetSessions();
+  return Boolean(s.session7Completed);
 }
 
 var S5_EXERCISES = [
@@ -7823,6 +7980,527 @@ function renderSession6Complete(container) {
   }
 }
 
+/* ============================================
+   SESION 7: NIVEL 1 - PREGUNTAS Y REPASO
+   Tres bloques internos:
+   B7 Preguntas simple (DO / DOES)
+   B8 Preguntas continuo (AM / IS / ARE + -ing)
+   B9 Repaso mezclado negación simple/continuo
+   Regla #9: toda palabra en ingles con su traduccion.
+============================================ */
+
+var S7_VOCAB = [
+  { en: "work", es: "trabajar" },
+  { en: "study", es: "estudiar" },
+  { en: "live", es: "vivir" },
+  { en: "speak", es: "hablar" },
+  { en: "read", es: "leer" },
+  { en: "eat", es: "comer" },
+  { en: "watch", es: "ver / mirar" },
+  { en: "run", es: "correr" },
+  { en: "need", es: "necesitar" },
+  { en: "play", es: "jugar" },
+  { en: "go", es: "ir" },
+  { en: "sleep", es: "dormir" },
+  { en: "write", es: "escribir" },
+  { en: "dance", es: "bailar" },
+  { en: "swim", es: "nadar" },
+  { en: "city", es: "ciudad" },
+  { en: "park", es: "parque" },
+  { en: "water", es: "agua" },
+  { en: "television", es: "televisión" },
+  { en: "Monday", es: "lunes" },
+  { en: "English", es: "inglés" }
+];
+
+var S7_TABLE_DO = [
+  { es: "¿trabajas tú?", en: "you work", ans: "do" },
+  { es: "¿estudia él?", en: "he study", ans: "does" },
+  { es: "¿lee ella?", en: "she read", ans: "does" },
+  { es: "¿comemos nosotros?", en: "we eat", ans: "do" },
+  { es: "¿juegan ellos?", en: "they play", ans: "do" },
+  { es: "¿va eso?", en: "it go", ans: "does" },
+  { es: "¿duermo yo?", en: "I sleep", ans: "do" }
+];
+
+var S7_TABLE_AM = [
+  { es: "¿estás trabajando tú?", en: "you working", ans: "are" },
+  { es: "¿está estudiando él?", en: "he studying", ans: "is" },
+  { es: "¿están comiendo ellos?", en: "they eating", ans: "are" },
+  { es: "¿estoy escribiendo yo?", en: "I writing", ans: "am" },
+  { es: "¿está leyendo ella?", en: "she reading", ans: "is" },
+  { es: "¿estamos corriendo nosotros?", en: "we running", ans: "are" }
+];
+
+var S7_EX_B7 = [
+  { es: "¿Trabajas tú?", en: ["do you work"] },
+  { es: "¿Estudia ella?", en: ["does she study"] },
+  { es: "¿Viven ellos en la ciudad?", en: ["do they live in the city"] },
+  { es: "¿Hablas tú inglés?", en: ["do you speak english"] },
+  { es: "¿Lee él libros?", en: ["does he read books"] },
+  { es: "¿Comemos nosotros?", en: ["do we eat"] },
+  { es: "¿Ve ella televisión?", en: ["does she watch television"] },
+  { es: "¿Corren ellos en el parque?", en: ["do they run in the park"] },
+  { es: "¿Necesitas tú agua?", en: ["do you need water"] },
+  { es: "¿Trabaja él los lunes?", en: ["does he work on mondays"] },
+  { es: "Sí, yo sí.", en: ["yes i do"] },
+  { es: "No, él no.", en: ["no he doesn't", "no he does not"] }
+];
+
+var S7_EX_B8 = [
+  { es: "¿Estás trabajando tú?", en: ["are you working"] },
+  { es: "¿Está estudiando él?", en: ["is he studying"] },
+  { es: "¿Están comiendo ellos?", en: ["are they eating"] },
+  { es: "¿Está escribiendo ella?", en: ["is she writing"] },
+  { es: "¿Estás leyendo tú?", en: ["are you reading"] },
+  { es: "¿Estamos corriendo nosotros?", en: ["are we running"] },
+  { es: "¿Está durmiendo él?", en: ["is he sleeping"] },
+  { es: "¿Están bailando ellos?", en: ["are they dancing"] },
+  { es: "Sí, yo sí.", en: ["yes i am"] },
+  { es: "No, ellos no están.", en: ["no they are not", "no they aren't"] }
+];
+
+var S7_EX_B9 = [
+  { es: "Yo no trabajo.", en: ["i do not work", "i don't work"] },
+  { es: "Yo no estoy trabajando.", en: ["i am not working"] },
+  { es: "Ella no estudia.", en: ["she does not study", "she doesn't study"] },
+  { es: "Ella no está estudiando.", en: ["she is not studying"] },
+  { es: "Ellos no viven en la ciudad.", en: ["they do not live in the city", "they don't live in the city"] },
+  { es: "Ellos no están corriendo.", en: ["they are not running"] },
+  { es: "Tú no hablas inglés.", en: ["you do not speak english", "you don't speak english"] },
+  { es: "Tú no estás hablando.", en: ["you are not speaking"] },
+  { es: "Él no ve televisión.", en: ["he does not watch television", "he doesn't watch television"] },
+  { es: "Él no está viendo televisión.", en: ["he is not watching television"] },
+  { es: "Nosotros no comemos.", en: ["we do not eat", "we don't eat"] },
+  { es: "Nosotros no estamos comiendo.", en: ["we are not eating"] },
+  { es: "Tú no trabajas.", en: ["you do not work", "you don't work"] },
+  { es: "Tú no estás trabajando.", en: ["you are not working"] },
+  { es: "Él no nada.", en: ["he does not swim", "he doesn't swim"] }
+];
+
+/* ---------- INTRO ---------- */
+function renderSession7Intro(container) {
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 7</div>' +
+      '<h2 class="ob-title">Nivel 1: Preguntas y Repaso</h2>' +
+      '<p class="ob-sub">' + ssDisplayEn("do") + ' / ' + ssDisplayEn("does") + ' (preguntas en simple) y ' + ssDisplayEn("am / is / are") + ' + -ing (preguntas en continuo).</p>' +
+      '<p class="ob-sub">Tres bloques: preguntas simple, preguntas continuo y repaso mezclado. ~15 min cada uno.</p>' +
+      '<div class="s4-rule"><b>REGLA DE ORO #9 — CERO PALABRAS SIN TRADUCCIÓN:</b> toda palabra en inglés que veas o escuches mostrará SIEMPRE su traducción al español en pantalla, y el tutor la dirá en voz alta. Nunca se asume que ya conoces el significado.</div>' +
+      '<div class="ob-actions"><button id="s7Start" class="btn">Comenzar</button></div>' +
+    '</div>';
+
+  document.getElementById("s7Start").onclick = function () {
+    renderSession7B7(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión siete. Nivel uno: preguntas y repaso. Aprendemos a preguntar en presente simple con do y does, en presente continuo con am, is, are más ing. Y cerramos con un repaso mezclado de negación. Regla de oro número nueve: cero palabras sin traducción. Toda palabra en inglés siempre con su traducción en pantalla y en voz.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 7: PREGUNTAS SIMPLE (DO / DOES) ---------- */
+function renderSession7B7(container) {
+  var rows = "";
+
+  S7_TABLE_DO.forEach(function (item, i) {
+    rows +=
+      '<div class="s6-row">' +
+        '<div class="n0-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="n0-en">' + ssDisplayEn(item.en) + '</div>' +
+        '<div class="s6-ans">' +
+          '<input id="s7tv' + i + '" class="n0-select" type="text" placeholder="do / does" autocomplete="off" autocapitalize="off">' +
+          '<div id="s7tvf' + i + '" class="s4-answer"></div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  var vocabChips = S7_VOCAB.slice(0, 12).map(function (v) {
+    return '<span class="ob-chip s6-chip">' + escapeHtml(v.en) + ' = ' + escapeHtml(v.es) + '</span>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 7</div>' +
+      '<h2 class="ob-title">Preguntas en Simple</h2>' +
+      '<div class="s6-vocab"><b>Vocabulario de este bloque:</b><br>' + vocabChips + '</div>' +
+      '<div class="s4-rule"><b>Regla:</b> para preguntar en simple usamos el auxiliar ' + ssDisplayEn("do") + ' (1ª y 2ªs personas) o ' + ssDisplayEn("does") + ' (3ªs personas) <b>antes</b> del pronombre. El verbo va sin -s y sin -ing.</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("Do you work?") + ' (¿trabajas tú?)<br>' +
+        ssDisplayEn("Does he study?") + ' (¿estudia él?)<br>' +
+        ssDisplayEn("Do they live in the city?") + ' (¿viven ellos en la ciudad?)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Respuestas cortas:</b><br>' +
+        ssDisplayEn("Yes, I do.") + ' (sí, yo sí) · ' + ssDisplayEn("No, he doesn't.") + ' (no, él no)' +
+      '</div>' +
+      '<p class="ob-sub">Completa la tabla: escribe <b>do</b> o <b>does</b> para cada persona. Primero piensa, luego revisa.</p>' +
+      '<div class="n0-table">' +
+        '<div class="n0-table-head"><span>Español</span><span>Inglés</span><span>do / does</span></div>' +
+        rows +
+      '</div>' +
+      '<div id="s7TableScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s7Check" class="btn">Revisar</button>' +
+        '<button id="s7B7Next" class="btn" disabled>Continuar a ejercicios</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s7Check").onclick = function () {
+    var tableScore = 0;
+
+    S7_TABLE_DO.forEach(function (item, i) {
+      var inp = document.getElementById("s7tv" + i);
+      var fb = document.getElementById("s7tvf" + i);
+      var ok = s4Norm(inp.value) === item.ans;
+
+      if (ok) tableScore++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.ans + ".";
+    });
+
+    window.__s7score = (window.__s7score || 0) + tableScore;
+
+    document.getElementById("s7TableScore").textContent =
+      "Resultado: " + tableScore + "/" + S7_TABLE_DO.length;
+
+    document.getElementById("s7B7Next").disabled = false;
+  };
+
+  document.getElementById("s7B7Next").onclick = function () {
+    renderSession7B7Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque siete, preguntas en presente simple. El auxiliar va antes del pronombre. Do para primera y segundas personas. Does para terceras personas. Ejemplos: do you work, ¿trabajas tú? Does he study, ¿estudia él? El verbo no lleva s ni ing. Completa la tabla con do o does.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 7: EJERCICIOS ---------- */
+function renderSession7B7Ex(container) {
+  var rows = "";
+
+  S7_EX_B7.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s7b7e' + i + '" class="s4-input" type="text" placeholder="Escribe la pregunta en inglés...">' +
+        '<div id="s7b7f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 7 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Pregunta en inglés</h2>' +
+      '<p class="ob-sub">Traduce cada pregunta usando do o does. El verbo va sin -s y sin -ing.</p>' +
+      rows +
+      '<div id="s7b7Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s7b7Check" class="btn">Revisar</button>' +
+        '<button id="s7b7Next" class="btn" disabled>Continuar a Continuo</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s7b7Check").onclick = function () {
+    var score = 0;
+
+    S7_EX_B7.forEach(function (item, i) {
+      var inp = document.getElementById("s7b7e" + i);
+      var fb = document.getElementById("s7b7f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s7score = (window.__s7score || 0) + score;
+
+    document.getElementById("s7b7Score").textContent =
+      "Resultado: " + score + "/" + S7_EX_B7.length;
+
+    document.getElementById("s7b7Next").disabled = false;
+  };
+
+  document.getElementById("s7b7Next").onclick = function () {
+    renderSession7B8(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Doce preguntas para traducir al inglés. Recuerda: do o does primero, el verbo sin s y sin ing. Ejemplo: ¿trabajas tú? Do you work.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 8: PREGUNTAS CONTINUO (AM / IS / ARE + -ING) ---------- */
+function renderSession7B8(container) {
+  var rows = "";
+
+  S7_TABLE_AM.forEach(function (item, i) {
+    rows +=
+      '<div class="s6-row">' +
+        '<div class="n0-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="n0-en">' + ssDisplayEn(item.en) + '</div>' +
+        '<div class="s6-ans">' +
+          '<input id="s7tv2' + i + '" class="n0-select" type="text" placeholder="am / is / are" autocomplete="off" autocapitalize="off">' +
+          '<div id="s7tv2f' + i + '" class="s4-answer"></div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  var vocabChips = S7_VOCAB.slice(12, 21).map(function (v) {
+    return '<span class="ob-chip s6-chip">' + escapeHtml(v.en) + ' = ' + escapeHtml(v.es) + '</span>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 8</div>' +
+      '<h2 class="ob-title">Preguntas en Continuo</h2>' +
+      '<div class="s6-vocab"><b>Vocabulario de este bloque:</b><br>' + vocabChips + '</div>' +
+      '<div class="s4-rule"><b>Regla:</b> para preguntar en continuo, el verbo to be (' + ssDisplayEn("am") + ' / ' + ssDisplayEn("is") + ' / ' + ssDisplayEn("are") + ') va <b>antes</b> del pronombre, y el verbo principal lleva -ing.</div>' +
+      '<div class="s4-rule">' +
+        ssDisplayEn("Are you working?") + ' (¿estás trabajando tú?)<br>' +
+        ssDisplayEn("Is he studying?") + ' (¿está estudiando él?)<br>' +
+        ssDisplayEn("Are they eating?") + ' (¿están comiendo ellos?)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Contraste:</b><br>' +
+        ssDisplayEn("Do you work?") + ' (¿trabajas tú? — rutina / hábito)<br>' +
+        ssDisplayEn("Are you working?") + ' (¿estás trabajando? — ahora / en este momento)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Respuestas cortas:</b><br>' +
+        ssDisplayEn("Yes, I am.") + ' (sí, yo estoy) · ' + ssDisplayEn("No, they are not.") + ' (no, ellos no están)' +
+      '</div>' +
+      '<p class="ob-sub">Completa la tabla: escribe <b>am</b>, <b>is</b> o <b>are</b> para cada persona.</p>' +
+      '<div class="n0-table">' +
+        '<div class="n0-table-head"><span>Español</span><span>Inglés</span><span>am / is / are</span></div>' +
+        rows +
+      '</div>' +
+      '<div id="s7TableScore2" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s7Check2" class="btn">Revisar</button>' +
+        '<button id="s7B8Next" class="btn" disabled>Continuar a ejercicios</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s7Check2").onclick = function () {
+    var tableScore = 0;
+
+    S7_TABLE_AM.forEach(function (item, i) {
+      var inp = document.getElementById("s7tv2" + i);
+      var fb = document.getElementById("s7tv2f" + i);
+      var ok = s4Norm(inp.value) === item.ans;
+
+      if (ok) tableScore++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.ans + ".";
+    });
+
+    window.__s7score = (window.__s7score || 0) + tableScore;
+
+    document.getElementById("s7TableScore2").textContent =
+      "Resultado: " + tableScore + "/" + S7_TABLE_AM.length;
+
+    document.getElementById("s7B8Next").disabled = false;
+  };
+
+  document.getElementById("s7B8Next").onclick = function () {
+    renderSession7B8Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque ocho, preguntas en presente continuo. El verbo to be va antes del pronombre y el verbo principal con ing. Ejemplos: are you working, ¿estás trabajando? Is he studying, ¿está estudiando él? Y la diferencia: do you work es rutina, are you working es ahora. Completa la tabla con am, is o are.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 8: EJERCICIOS ---------- */
+function renderSession7B8Ex(container) {
+  var rows = "";
+
+  S7_EX_B8.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s7b8e' + i + '" class="s4-input" type="text" placeholder="Escribe la pregunta en inglés...">' +
+        '<div id="s7b8f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 8 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Pregunta en Continuo</h2>' +
+      '<p class="ob-sub">Traduce cada pregunta usando am / is / are + verbo con -ing.</p>' +
+      rows +
+      '<div id="s7b8Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s7b8Check" class="btn">Revisar</button>' +
+        '<button id="s7b8Next" class="btn" disabled>Continuar a Repaso</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s7b8Check").onclick = function () {
+    var score = 0;
+
+    S7_EX_B8.forEach(function (item, i) {
+      var inp = document.getElementById("s7b8e" + i);
+      var fb = document.getElementById("s7b8f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s7score = (window.__s7score || 0) + score;
+
+    document.getElementById("s7b8Score").textContent =
+      "Resultado: " + score + "/" + S7_EX_B8.length;
+
+    document.getElementById("s7b8Next").disabled = false;
+  };
+
+  document.getElementById("s7b8Next").onclick = function () {
+    renderSession7B9(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Diez preguntas en continuo para traducir. Recuerda: am, is o are primero y el verbo con ing. Ejemplo: ¿estás trabajando tú? Are you working.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 9: REPASO MEZCLADO NEGACION ---------- */
+function renderSession7B9(container) {
+  var vocabChips = S7_VOCAB.map(function (v) {
+    return '<span class="ob-chip s6-chip">' + escapeHtml(v.en) + ' = ' + escapeHtml(v.es) + '</span>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 9</div>' +
+      '<h2 class="ob-title">Repaso mezclado: Negación</h2>' +
+      '<div class="s6-vocab"><b>Vocabulario de repaso:</b><br>' + vocabChips + '</div>' +
+      '<div class="s4-rule"><b>Simple:</b> ' + ssDisplayEn("do not / does not") + ' (no) antes del verbo sin -ing.<br>' +
+        ssDisplayEn("I do not work.") + ' (yo no trabajo) · ' + ssDisplayEn("He does not swim.") + ' (él no nada)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Continuo:</b> ' + ssDisplayEn("am / is / are") + ' + ' + ssDisplayEn("not") + ' + verbo con -ing.<br>' +
+        ssDisplayEn("I am not working.") + ' (yo no estoy trabajando) · ' + ssDisplayEn("They are not running.") + ' (ellos no están corriendo)' +
+      '</div>' +
+      '<div class="s4-rule"><b>Contracciones:</b> ' + ssDisplayEn("don't") + ' (do not) · ' + ssDisplayEn("doesn't") + ' (does not).</div>' +
+      '<div class="ob-actions"><button id="s7B9Next" class="btn">Ir a ejercicios</button></div>' +
+    '</div>';
+
+  document.getElementById("s7B9Next").onclick = function () {
+    renderSession7B9Ex(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Bloque nueve, repaso mezclado. En simple, do not o does not antes del verbo sin ing. I do not work, yo no trabajo. En continuo, am is are, más not, más verbo con ing. I am not working, yo no estoy trabajando. Las contracciones: don't y doesn't.", "narrator");
+  }
+}
+
+/* ---------- BLOQUE 9: EJERCICIOS ---------- */
+function renderSession7B9Ex(container) {
+  var rows = "";
+
+  S7_EX_B9.forEach(function (item, i) {
+    rows +=
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (i + 1) + '. ' + item.es + '</div>' +
+        '<input id="s7b9e' + i + '" class="s4-input" type="text" placeholder="Escribe la negación en inglés...">' +
+        '<div id="s7b9f' + i + '" class="s4-answer"></div>' +
+      '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE 9 · EJERCICIOS</div>' +
+      '<h2 class="ob-title">Repaso: niega sin mezclar tiempos</h2>' +
+      '<p class="ob-sub">Simple: do not / does not + verbo sin -ing. Continuo: am / is / are + not + verbo con -ing. Las contracciones también cuentan como correctas.</p>' +
+      rows +
+      '<div id="s7b9Score" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="s7b9Check" class="btn">Revisar</button>' +
+        '<button id="s7b9Next" class="btn" disabled>Completar sesión</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("s7b9Check").onclick = function () {
+    var score = 0;
+
+    S7_EX_B9.forEach(function (item, i) {
+      var inp = document.getElementById("s7b9e" + i);
+      var fb = document.getElementById("s7b9f" + i);
+      var val = s4Norm(inp.value);
+      var ok = item.en.indexOf(val) > -1;
+
+      if (ok) score++;
+
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+
+    window.__s7score = (window.__s7score || 0) + score;
+
+    document.getElementById("s7b9Score").textContent =
+      "Resultado: " + score + "/" + S7_EX_B9.length;
+
+    document.getElementById("s7b9Next").disabled = false;
+  };
+
+  document.getElementById("s7b9Next").onclick = function () {
+    renderSession7Complete(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Quince oraciones mezcladas de negación. En simple do not o does not con verbo sin ing. En continuo am is are, más not, más verbo con ing. Las contracciones don't y doesn't también valen. Ejemplo: yo no trabajo, I do not work.", "narrator");
+  }
+}
+
+/* ---------- COMPLETAR ---------- */
+function renderSession7Complete(container) {
+  var s = ssGetSessions();
+  var totalScore = window.__s7score || 0;
+
+  s.session7Completed = true;
+  s.session7Score = totalScore;
+
+  if (typeof appState !== "undefined") {
+    appState.lastInteraction = "Sesión 7: Nivel 1 Preguntas y Repaso";
+  }
+
+  ssSave();
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">SESIÓN 7</div>' +
+      '<h2 class="ob-title">Nivel 1 de preguntas completado</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Preguntas y repaso</div><div class="mp-profile-value">' + totalScore + '/50</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Dominado</div><div class="mp-profile-value">DO/DOES · AM/IS/ARE + -ING · Negación</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Ya preguntas en simple y en continuo, y repasas la negación sin mezclar tiempos. Regla #9 aplicada: todo inglés siempre con su traducción.</p>' +
+      '<div class="ob-actions"><button id="s7Back" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("s7Back").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  if (typeof ssSpeak === "function") {
+    ssSpeak("Sesión siete completada. Ya preguntas en presente simple con do y does, en continuo con am is are más ing, y repasas la negación sin mezclar tiempos. " + ssEnQuote("Excellent work."), "narrator");
+  }
+}
+
 /* ---------- PANEL ACTUALIZADO: 5 SESIONES ---------- */
 function renderSessionsPanel(container) {
   var s1 = ssSession1Done();
@@ -7925,6 +8603,12 @@ function aurixNextLessonPreview() {
   }
   if (!sess.session5Completed) {
     return { title: "Sesión 5", preview: "Negación y auxiliares: la palabra not siempre va después del auxiliar. Do para 1ª y 2ª, is más -ing para 3ªs." };
+  }
+  if (!sess.session6Completed) {
+    return { title: "Sesión 6", preview: "Nivel 1: Verbo To Be en afirmativo, negativo e interrogativo. Todo en inglés con su traducción." };
+  }
+  if (!sess.session7Completed) {
+    return { title: "Sesión 7", preview: "Nivel 1: Preguntas y Repaso. Do / does en simple, am / is / are + -ing en continuo, y repaso mezclado de negación." };
   }
   return { title: "Repaso", preview: "Practica speaking y rompe tus récords de acento." };
 }
@@ -8151,6 +8835,14 @@ function aurixNextLessonPreview() {
     "renderSession6B3",
     "renderSession6B3Ex",
     "renderSession6Complete",
+    "renderSession7Intro",
+    "renderSession7B7",
+    "renderSession7B7Ex",
+    "renderSession7B8",
+    "renderSession7B8Ex",
+    "renderSession7B9",
+    "renderSession7B9Ex",
+    "renderSession7Complete",
     "renderSessionsPanel"
   ].forEach(function (n) {
     wrapSet(n, null);
@@ -8245,11 +8937,16 @@ function aurixNextLessonPreview() {
 })();
 
 /* ============================================
-   VOCES POR DEFECTO + NOMBRE AURIX COMO PALABRA
+   VOCES POR DEFECTO + PALABRAS COMO PALABRA
    Narrador: Google español de Estados Unidos
    AURIX:    Google UK English Female
-   El subtitulo muestra "AURIX"; la voz recibe
-   "Aurix" para pronunciarlo como palabra.
+   El subtitulo muestra el texto real; la voz
+   recibe una normalizacion para que lea como
+   palabra y no deletree: las palabras en
+   MAYÚSCULAS y las cortas (AM, ARE, YOU, ...)
+   se convierten a título para que el motor TTS
+   no las lea como sigla. Solo los acronimos
+   reales (ADN, MCER, TV, ...) se deletrean.
 ============================================ */
 
 (function () {
@@ -8262,11 +8959,27 @@ function aurixNextLessonPreview() {
   var NARRATOR_DEFAULT = "Google español de Estados Unidos";
   var AURIX_DEFAULT = "Google UK English Female";
 
+  var SPELL_OUT = [
+    "TTS", "OS", "AI", "API", "DB", "UI", "JSON", "UK", "MX", "US", "TV",
+    "MVP", "MCER", "ADN"
+  ];
+
   function pronounce(text) {
     return String(text)
       .replace(/\bAURIX\b/g, "Aurix")
-      .replace(/\bA\.U\.R\.I\.X\./g, "Aurix");
+      .replace(/\bA\.U\.R\.I\.X\./g, "Aurix")
+      .replace(/\b[A-ZÁÉÍÓÚÜÑ]+(?:['’][A-ZÁÉÍÓÚÜÑ]+)*\b/g, function (w) {
+        if (SPELL_OUT.indexOf(w) > -1) {
+          return w;
+        }
+        return w.charAt(0) + w.slice(1).toLowerCase();
+      })
+      .replace(/\b[A-ZÁÉÍÓÚÜÑ]\b/g, function (w) {
+        return w === "I" ? "I" : w.toLowerCase();
+      });
   }
+
+  window.aurixPronounce = pronounce;
 
   function overrideSpeakSegment(tts) {
     if (tts.__segmentOverridden) {
@@ -8385,99 +9098,223 @@ function renderSessionsPanel(container) {
     aurixSetMenuEnabled(true);
   }
 
-  var s1 = ssSession1Done();
-  var s2 = ssSession2Done();
-  var s3 = ssSession3Done();
-  var s4 = ssSession4Done();
-  var s5 = ssSession5Done();
-  var s6 = ssSession6Done();
+  var S = [
+    { num: 1, title: "Primera conversación", done: ssSession1Done(), unlocked: true, open: "profile" },
+    { num: 2, title: "Nivel 0: Singular, Plural y Pronombres", done: ssSession2Done(), unlocked: ssSession1Done(), open: "s2" },
+    { num: 3, title: "Filtro Maestro R.O.D.", done: ssSession3Done(), unlocked: ssSession2Done(), open: "s3" },
+    { num: 4, title: "Presente Simple vs Continuo", done: ssSession4Done(), unlocked: ssSession3Done(), open: "s4" },
+    { num: 5, title: "Negación y Verbos Auxiliares", done: ssSession5Done(), unlocked: ssSession4Done(), open: "s5" },
+    { num: 6, title: "Nivel 1: Verbo To Be", done: ssSession6Done(), unlocked: ssSession5Done(), open: "s6" },
+    { num: 7, title: "Nivel 1: Preguntas y Repaso", done: ssSession7Done(), unlocked: ssSession6Done(), open: "s7" }
+  ];
 
+  var total = S.length;
   var done = 0;
-  if (s1) done++;
-  if (s2) done++;
-  if (s3) done++;
-  if (s4) done++;
-  if (s5) done++;
-  if (s6) done++;
+  S.forEach(function (s) { if (s.done) done++; });
+  var pct = Math.round((done / total) * 100);
 
-  var progress = Math.round((done / 6) * 100);
+  /* Migración animada: detecta la sesión recién completada comparando
+     con el último render del panel. */
+  var prevDone = window.__ssDoneMap || null;
+  var justNum = null;
+  if (prevDone) {
+    for (var ji = 0; ji < S.length; ji++) {
+      if (S[ji].done && !prevDone["s" + S[ji].num]) { justNum = S[ji].num; break; }
+    }
+  }
+  var newMap = {};
+  S.forEach(function (s) { newMap["s" + s.num] = s.done; });
+  window.__ssDoneMap = newMap;
 
-  function cardHTML(num, completed, unlocked, isNext, title) {
-    var cardCls = completed ? "completed" : (unlocked ? "available" : "locked");
-    var badgeCls = completed ? "done" : (unlocked ? "next" : "locked");
-    var go = completed ? "Repasar ›" : (unlocked ? (isNext ? "Continuar ›" : "Entrar ›") : "🔒");
-    var status = completed ? "Completada" : (unlocked ? "Disponible" : "Bloqueada");
-    var nextCls = isNext && !completed ? " ss-next" : "";
+  /* SIGUIENTE MISIÓN = primera sesión disponible */
+  var next = null;
+  for (var ni = 0; ni < S.length; ni++) {
+    if (!S[ni].done && S[ni].unlocked) { next = S[ni]; break; }
+  }
+
+  function openSession(s) {
+    var fns = {
+      profile: function () { if (typeof renderMissionProfileName === "function") renderMissionProfileName(container); },
+      s2: function () { renderSession2Intro(container); },
+      s3: function () { renderSession3Intro(container); },
+      s4: function () { renderSession4Intro(container); },
+      s5: function () { renderSession5Intro(container); },
+      s6: function () { renderSession6Intro(container); },
+      s7: function () { renderSession7Intro(container); }
+    };
+    var fn = fns[s.open];
+    if (fn) fn();
+  }
+
+  function ssToast(msg) {
+    var t = document.getElementById("ssToast");
+
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "ssToast";
+      t.className = "ss-toast";
+      document.body.appendChild(t);
+    }
+
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._t);
+    t._t = setTimeout(function () {
+      t.classList.remove("show");
+    }, 2600);
+  }
+
+  function rowHTML(s) {
+    var cls = s.done ? "completed" : (s.unlocked ? "available" : "locked");
+    var ico = s.done ? "✓" : (s.unlocked ? "▶" : "🔒");
+    var act = s.done ? "Repasar" : (s.unlocked ? "Continuar" : "");
+    var just = justNum === s.num ? " ss-just-done" : "";
 
     return (
-      '<div class="ss-card ss-tap' + nextCls + " " + cardCls + '" data-ss="' + num + '">' +
-        '<div class="ss-card-head">' +
-          '<span class="ss-badge ' + badgeCls + '">Sesión ' + num + '</span>' +
-          '<span class="ss-go' + (go === "🔒" ? " ss-locked" : "") + '">' + go + '</span>' +
-        '</div>' +
-        '<div class="ss-title">' + title + '</div>' +
-        '<div class="ss-status">' + status + '</div>' +
+      '<div class="ss-row ' + cls + just + '" data-ss="' + s.num + '">' +
+        '<span class="ss-ico">' + ico + '</span>' +
+        '<span class="ss-row-txt">' +
+          '<span class="ss-row-num">SESIÓN ' + s.num + '</span>' +
+          '<span class="ss-row-title">' + s.title + '</span>' +
+        '</span>' +
+        (act ? '<span class="ss-chip">' + act + '</span>' : '') +
       '</div>'
     );
   }
 
+  function secHTML(key, label, rows, openByDefault) {
+    var open = openByDefault && rows.length ? " open" : "";
+    var chev = open ? "▾" : "▸";
+
+    return (
+      '<div class="ss-sec' + open + '" data-ss-sec="' + key + '">' +
+        '<button class="ss-sec-head" type="button" data-ss-sec-toggle="' + key + '" aria-expanded="' + (open ? "true" : "false") + '">' +
+          '<span class="ss-sec-title">' + label + ' <span class="ss-sec-count">(' + rows.length + ')</span></span>' +
+          '<span class="ss-sec-chev">' + chev + '</span>' +
+        '</button>' +
+        '<div class="ss-sec-body" data-ss-sec-body="' + key + '">' +
+          (rows.length ? rows.map(rowHTML).join("") : '<div class="ss-sec-empty">Aún no hay sesiones aquí.</div>') +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  var doneRows = S.filter(function (s) { return s.done; });
+  var pendingRows = S.filter(function (s) { return !s.done; });
+
+  var heroHtml;
+
+  if (next) {
+    heroHtml =
+      '<div class="ss-hero">' +
+        '<div class="ss-hero-label">▶ SIGUIENTE MISIÓN</div>' +
+        '<div class="ss-hero-title">SESIÓN ' + next.num + ' · ' + next.title + '</div>' +
+        '<button class="btn ss-hero-cta" data-ss="' + next.num + '" type="button">Continuar</button>' +
+      '</div>';
+  } else {
+    heroHtml =
+      '<div class="ss-hero ss-hero-all">' +
+        '<div class="ss-hero-label">🎉 PROGRESO COMPLETO</div>' +
+        '<div class="ss-hero-title">Todas las sesiones completadas</div>' +
+        '<button class="btn ss-hero-cta" data-ss="' + S[0].num + '" type="button">Repasar todo</button>' +
+      '</div>';
+  }
+
   container.innerHTML =
-    '<div class="card glass ob-card">' +
-      '<div class="badge">AURIX OS</div>' +
-      '<h2 class="ob-title">Panel de sesiones</h2>' +
-      '<p class="ob-sub">Toca una tarjeta para entrar a su sesión.</p>' +
-      '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:' + progress + '%"></div></div>' +
-      '<p class="ss-status">Progreso: ' + done + '/6 sesiones</p>' +
-      '<div class="ss-grid">' +
-        cardHTML(1, s1, true, !s1, "Primera conversación") +
-        cardHTML(2, s2, s1, !s2 && s1, "Nivel 0: Singular, Plural y Pronombres") +
-        cardHTML(3, s3, s2, !s3 && s2, "Filtro Maestro R.O.D.") +
-        cardHTML(4, s4, s3, !s4 && s3, "Presente Simple vs Continuo") +
-        cardHTML(5, s5, s4, !s5 && s4, "Negación y Verbos Auxiliares") +
-        cardHTML(6, s6, s5, !s6 && s5, "Nivel 1: Verbo To Be") +
+    '<div class="card glass ob-card ss-panel-card">' +
+      '<div class="ss-progress-sticky">' +
+        '<div class="ss-progress-row">' +
+          '<span class="ss-progress-label">TU PROGRESO</span>' +
+          '<span class="ss-progress-count">' + done + '/' + total + '</span>' +
+        '</div>' +
+        '<div class="ss-progress-track"><div class="ss-progress-fill" style="width:0%"></div></div>' +
+      '</div>' +
+      heroHtml +
+      secHTML("done", "✓ COMPLETADAS", doneRows, Boolean(justNum)) +
+      secHTML("pending", "⏳ PENDIENTES", pendingRows, true) +
+      '<div class="mb-panel-section">' +
+        '<div class="mb-panel-title">Bloques de Habilidades · Formato Maestro</div>' +
+        '<p class="mb-panel-sub">Cada bloque: Gramática + Reading + Listening + Speaking + Writing (10 c/u). Todo en inglés con su traducción.</p>' +
+        '<div class="ss-grid">' + mbPanelCards() + '</div>' +
       '</div>' +
     '</div>';
 
-  function bind(num, unlocked, fn) {
-    var el = container.querySelector('[data-ss="' + num + '"]');
+  /* Barra de progreso: se llena con animación hasta el nuevo porcentaje. */
+  var progressFill = container.querySelector(".ss-progress-fill");
 
-    if (!el) {
-      return;
-    }
+  if (progressFill) {
+    requestAnimationFrame(function () {
+      progressFill.style.width = pct + "%";
+    });
+  }
+
+  /* Acordeón: ambas secciones pueden estar abiertas a la vez. */
+  container.querySelectorAll(".ss-sec-head").forEach(function (head) {
+    head.addEventListener("click", function () {
+      var sec = head.closest(".ss-sec");
+      var body = sec.querySelector(".ss-sec-body");
+      var chev = head.querySelector(".ss-sec-chev");
+      var open = sec.classList.toggle("open");
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+      chev.textContent = open ? "▾" : "▸";
+      body.style.maxHeight = open ? body.scrollHeight + "px" : "0px";
+    });
+  });
+
+  /* Sección abierta por defecto: fija la altura real para la transición. */
+  container.querySelectorAll(".ss-sec.open .ss-sec-body").forEach(function (body) {
+    body.style.maxHeight = body.scrollHeight + "px";
+  });
+
+  /* Hero: continuar con CERO scroll. */
+  var heroCta = container.querySelector(".ss-hero-cta");
+
+  if (heroCta) {
+    heroCta.addEventListener("click", function () {
+      var num = parseInt(heroCta.getAttribute("data-ss"), 10);
+      var i;
+
+      for (i = 0; i < S.length; i++) {
+        if (S[i].num === num) { openSession(S[i]); return; }
+      }
+    });
+  }
+
+  function bindRow(s) {
+    var el = container.querySelector('.ss-row[data-ss="' + s.num + '"]');
+
+    if (!el) return;
 
     el.addEventListener("click", function () {
-      if (!unlocked) {
+      if (!s.done && !s.unlocked) {
         el.classList.add("ss-deny");
-
-        setTimeout(function () {
-          el.classList.remove("ss-deny");
-        }, 450);
+        setTimeout(function () { el.classList.remove("ss-deny"); }, 450);
 
         if (typeof ssSpeak === "function") {
           ssSpeak("Completa la sesión anterior para desbloquear esta sesión.", "narrator");
         }
 
+        ssToast("Completa la sesión anterior para desbloquear");
         return;
       }
 
-      fn();
+      openSession(s);
     });
   }
 
-  bind(1, true, function () {
-    if (typeof renderMissionProfileName === "function") {
-      renderMissionProfileName(container);
-    }
-  });
+  S.forEach(bindRow);
 
-  bind(2, s1, function () { renderSession2Intro(container); });
-  bind(3, s2, function () { renderSession3Intro(container); });
-  bind(4, s3, function () { renderSession4Intro(container); });
-  bind(5, s4, function () { renderSession5Intro(container); });
-  bind(6, s5, function () { renderSession6Intro(container); });
+  if (typeof mbBindPanelButtons === "function") {
+    mbBindPanelButtons(container);
+  }
+
+  /* Migración visible: la sesión recién completada llega animada. */
+  if (justNum) {
+    ssToast("Sesión " + justNum + " completada. ¡Sigue así!");
+  }
 
   if (typeof ssSpeak === "function") {
-    ssSpeak("Panel de sesiones. Progreso: " + done + " de 6. Toca una tarjeta para entrar.", "narrator");
+    ssSpeak("Panel de sesiones. Progreso: " + done + " de " + total + ". Toca una sesión para entrar.", "narrator");
   }
 }
 
@@ -8950,6 +9787,93 @@ function renderSessionsPanel(container) {
 })();
 
 /* ============================================
+   BIBLIOTECA A1: VOCABULARIO OFICIAL
+   Regla de producción: ningun bloque puede usar
+   palabras fuera de esta biblioteca. Toda palabra
+   nueva se agrega aqui primero, siempre con su
+   traduccion.
+============================================ */
+
+var A1_VERBS = [
+  { base: "be", es: "ser / estar", ing: "being", third: "is / am / are", rule_ing: "irregular", rule_third: "irregular" },
+  { base: "work", es: "trabajar", ing: "working", third: "works", rule_ing: "regular", rule_third: "s" },
+  { base: "study", es: "estudiar", ing: "studying", third: "studies", rule_ing: "y_sin_cambio", rule_third: "ies" },
+  { base: "read", es: "leer", ing: "reading", third: "reads", rule_ing: "regular", rule_third: "s" },
+  { base: "write", es: "escribir", ing: "writing", third: "writes", rule_ing: "quita_e", rule_third: "s" },
+  { base: "run", es: "correr", ing: "running", third: "runs", rule_ing: "duplica_cvc", rule_third: "s" },
+  { base: "sit", es: "sentarse", ing: "sitting", third: "sits", rule_ing: "duplica_cvc", rule_third: "s" },
+  { base: "eat", es: "comer", ing: "eating", third: "eats", rule_ing: "regular", rule_third: "s" },
+  { base: "play", es: "jugar / tocar", ing: "playing", third: "plays", rule_ing: "vocal_y_sin_cambio", rule_third: "s" },
+  { base: "watch", es: "mirar / ver", ing: "watching", third: "watches", rule_ing: "regular", rule_third: "es" },
+  { base: "go", es: "ir", ing: "going", third: "goes", rule_ing: "regular", rule_third: "es" },
+  { base: "live", es: "vivir", ing: "living", third: "lives", rule_ing: "quita_e", rule_third: "s" },
+  { base: "speak", es: "hablar", ing: "speaking", third: "speaks", rule_ing: "regular", rule_third: "s" },
+  { base: "listen", es: "escuchar", ing: "listening", third: "listens", rule_ing: "regular", rule_third: "s" },
+  { base: "dance", es: "bailar", ing: "dancing", third: "dances", rule_ing: "quita_e", rule_third: "es" },
+  { base: "sing", es: "cantar", ing: "singing", third: "sings", rule_ing: "regular", rule_third: "s" },
+  { base: "sleep", es: "dormir", ing: "sleeping", third: "sleeps", rule_ing: "regular", rule_third: "s" },
+  { base: "think", es: "pensar", ing: "thinking", third: "thinks", rule_ing: "regular", rule_third: "s" },
+  { base: "wait", es: "esperar", ing: "waiting", third: "waits", rule_ing: "regular", rule_third: "s" },
+  { base: "walk", es: "caminar", ing: "walking", third: "walks", rule_ing: "regular", rule_third: "s" },
+  { base: "travel", es: "viajar", ing: "traveling", third: "travels", rule_ing: "regular", rule_third: "s" },
+  { base: "learn", es: "aprender", ing: "learning", third: "learns", rule_ing: "regular", rule_third: "s" },
+  { base: "drink", es: "beber / tomar", ing: "drinking", third: "drinks", rule_ing: "regular", rule_third: "s" },
+  { base: "open", es: "abrir", ing: "opening", third: "opens", rule_ing: "regular", rule_third: "s" },
+  { base: "close", es: "cerrar", ing: "closing", third: "closes", rule_ing: "quita_e", rule_third: "s" },
+  { base: "buy", es: "comprar", ing: "buying", third: "buys", rule_ing: "vocal_y_sin_cambio", rule_third: "s" },
+  { base: "need", es: "necesitar", ing: "needing", third: "needs", rule_ing: "regular", rule_third: "s" },
+  { base: "like", es: "gustar", ing: "liking", third: "likes", rule_ing: "quita_e", rule_third: "s" },
+  { base: "have", es: "tener", ing: "having", third: "has", rule_ing: "quita_e", rule_third: "irregular" },
+  { base: "stop", es: "detenerse", ing: "stopping", third: "stops", rule_ing: "duplica_cvc", rule_third: "s" },
+  { base: "swim", es: "nadar", ing: "swimming", third: "swims", rule_ing: "duplica_cvc", rule_third: "s" },
+  { base: "teach", es: "ensenar", ing: "teaching", third: "teaches", rule_ing: "regular", rule_third: "es" },
+  { base: "do", es: "hacer", ing: "doing", third: "does", rule_ing: "regular", rule_third: "irregular" }
+];
+
+var A1_NOUNS = [
+  { singular: "student", plural: "students", es: "estudiante", category: "escuela", rule_plural: "s" },
+  { singular: "teacher", plural: "teachers", es: "maestro / maestra", category: "escuela", rule_plural: "s" },
+  { singular: "class", plural: "classes", es: "clase", category: "escuela", rule_plural: "es" },
+  { singular: "book", plural: "books", es: "libro", category: "escuela", rule_plural: "s" },
+  { singular: "pen", plural: "pens", es: "boligrafo", category: "escuela", rule_plural: "s" },
+  { singular: "computer", plural: "computers", es: "computadora", category: "escuela", rule_plural: "s" },
+  { singular: "library", plural: "libraries", es: "biblioteca", category: "escuela", rule_plural: "ies" },
+  { singular: "office", plural: "offices", es: "oficina", category: "escuela", rule_plural: "s" },
+  { singular: "exam", plural: "exams", es: "examen", category: "escuela", rule_plural: "s" },
+  { singular: "question", plural: "questions", es: "pregunta", category: "escuela", rule_plural: "s" },
+  { singular: "word", plural: "words", es: "palabra", category: "escuela", rule_plural: "s" },
+  { singular: "homework", plural: "", es: "tarea", category: "escuela", rule_plural: "sin_plural" },
+  { singular: "email", plural: "emails", es: "correo electronico", category: "escuela", rule_plural: "s" },
+  { singular: "citizen", plural: "citizens", es: "ciudadano / ciudadana", category: "ciudad", rule_plural: "s" },
+  { singular: "friend", plural: "friends", es: "amigo / amiga", category: "ciudad", rule_plural: "s" },
+  { singular: "house", plural: "houses", es: "casa", category: "ciudad", rule_plural: "s" },
+  { singular: "car", plural: "cars", es: "carro / auto", category: "ciudad", rule_plural: "s" },
+  { singular: "bus", plural: "buses", es: "autobus", category: "ciudad", rule_plural: "es" },
+  { singular: "city", plural: "cities", es: "ciudad", category: "ciudad", rule_plural: "ies" },
+  { singular: "street", plural: "streets", es: "calle", category: "ciudad", rule_plural: "s" },
+  { singular: "apartment", plural: "apartments", es: "departamento", category: "ciudad", rule_plural: "s" },
+  { singular: "table", plural: "tables", es: "mesa", category: "ciudad", rule_plural: "s" },
+  { singular: "park", plural: "parks", es: "parque", category: "ciudad", rule_plural: "s" },
+  { singular: "party", plural: "parties", es: "fiesta", category: "ciudad", rule_plural: "ies" },
+  { singular: "store", plural: "stores", es: "tienda", category: "ciudad", rule_plural: "s" },
+  { singular: "television", plural: "televisions", es: "television", category: "ciudad", rule_plural: "s" },
+  { singular: "coffee", plural: "", es: "cafe", category: "ciudad", rule_plural: "sin_plural" },
+  { singular: "water", plural: "", es: "agua", category: "ciudad", rule_plural: "sin_plural" },
+  { singular: "food", plural: "", es: "comida", category: "ciudad", rule_plural: "sin_plural" },
+  { singular: "day", plural: "days", es: "dia", category: "tiempo", rule_plural: "s" },
+  { singular: "week", plural: "weeks", es: "semana", category: "tiempo", rule_plural: "s" },
+  { singular: "month", plural: "months", es: "mes", category: "tiempo", rule_plural: "s" },
+  { singular: "year", plural: "years", es: "ano", category: "tiempo", rule_plural: "s" },
+  { singular: "morning", plural: "mornings", es: "manana", category: "tiempo", rule_plural: "s" },
+  { singular: "night", plural: "nights", es: "noche", category: "tiempo", rule_plural: "s" },
+  { singular: "Monday", plural: "Mondays", es: "lunes", category: "tiempo", rule_plural: "s" },
+  { singular: "September", plural: "", es: "septiembre", category: "tiempo", rule_plural: "sin_plural" },
+  { singular: "summer", plural: "", es: "verano", category: "tiempo", rule_plural: "sin_plural" },
+  { singular: "English", plural: "", es: "ingles", category: "idiomas", rule_plural: "sin_plural" },
+  { singular: "Spanish", plural: "", es: "espanol", category: "idiomas", rule_plural: "sin_plural" }
+];
+
+/* ============================================
    BIBLIOTECA AURIX v2: REGLAS COMPLETAS
    Cada tarjeta = TODAS las sub-reglas +
    ejemplos + errores comunes del método.
@@ -9080,6 +10004,14 @@ function renderSessionsPanel(container) {
         { sub: "Los 10 verbos", texto: "Forma base = sin -ING, sin -S.", ejemplos: ["run = correr", "dance = bailar", "write = escribir", "read = leer", "eat = comer", "sing = cantar", "sleep = dormir", "think = pensar", "try = intentar", "wait = esperar"], error: "", ids: [] },
         { sub: "Verbos adicionales", texto: "Para reglas especiales.", ejemplos: ["work = trabajar", "study = estudiar", "go = ir", "do = hacer", "have = tener"], error: "", ids: [] }
       ], video: ""
+    },
+    {
+      id: "vocab-a1", nivel: "A1", tema: "Vocabulario", titulo: "Vocabulario Oficial A1 (73 palabras)",
+      keywords: ["vocabulario", "verbos", "sustantivos", "palabras", "biblioteca", "run", "work", "student", "teacher", "city", "traduccion", "repaso"],
+      texto: "Los 33 verbos y 40 sustantivos oficiales del Nivel A1 con traducción, formas y regla aplicada. Cero palabras sin traducción (Regla #9).",
+      secciones: [
+        { sub: "Vocabulario interactivo", texto: "Usa el buscador o los filtros por categoría. Toca 🔊 para escuchar cada palabra.", ejemplos: [], error: "", ids: [], vocab: true }
+      ], video: ""
     }
   ];
 
@@ -9148,8 +10080,165 @@ function renderSessionsPanel(container) {
     }).join("");
   }
 
+  function renderVocab2() {
+    var body = document.getElementById("lib2Body");
+    if (!body) return;
+
+    var html =
+      '<div class="lib-rule">' +
+        '<span class="lib-tema">Vocabulario · A1</span>' +
+        '<h3 class="lib-title">Vocabulario Oficial A1</h3>' +
+        '<p class="lib-text"><b>Regla de producción:</b> ningún bloque puede usar palabras fuera de esta biblioteca. Toda palabra nueva se agrega aquí primero, siempre con su traducción (Regla #9).</p>' +
+        '<div class="vocab-filters">' +
+          '<button class="vocab-tab active" data-vtab="verbs" type="button">Verbos (' + A1_VERBS.length + ')</button>' +
+          '<button class="vocab-tab" data-vtab="nouns" type="button">Sustantivos (' + A1_NOUNS.length + ')</button>' +
+        '</div>' +
+        '<div class="vocab-cats" id="vocabCats"></div>' +
+        '<input id="vocabSearch" class="s4-input" type="text" placeholder="Busca: run, correr, library, biblioteca..." autocomplete="off">' +
+        '<div id="vocabList" class="vocab-list"></div>' +
+        '<div class="ob-actions"><button id="lib2Back" class="ob-small-btn">← Volver</button></div>' +
+      '</div>';
+
+    body.innerHTML = html;
+
+    var state = { tab: "verbs", cat: "" };
+
+    function speak(text) {
+      try {
+        if (window.AurixTTS && typeof window.AurixTTS.speakRichText === "function") {
+          window.AurixTTS.speakRichText('**"' + text + '"**', "aurix");
+        }
+      } catch (e) {}
+    }
+
+    function ruleLabel(r) {
+      var labels = {
+        "irregular": "irregular",
+        "s": "+s",
+        "es": "+es",
+        "ies": "consonante+y → ies",
+        "regular": "regular",
+        "quita_e": "quita la -e",
+        "duplica_cvc": "duplica la última consonante",
+        "y_sin_cambio": "y sin cambio",
+        "vocal_y_sin_cambio": "vocal + y sin cambio",
+        "sin_plural": "sin plural"
+      };
+      return labels[r] || r;
+    }
+
+    function renderCats() {
+      var cats = ["escuela", "ciudad", "tiempo", "idiomas"];
+      var el = document.getElementById("vocabCats");
+      if (!el) return;
+      el.innerHTML = '<button class="vocab-cat' + (state.cat === "" ? " active" : "") + '" data-vcat="" type="button">Todas</button>' +
+        cats.map(function (c) {
+          return '<button class="vocab-cat' + (state.cat === c ? " active" : "") + '" data-vcat="' + c + '" type="button">' + c.charAt(0).toUpperCase() + c.slice(1) + '</button>';
+        }).join("");
+    }
+
+    function renderList() {
+      var listEl = document.getElementById("vocabList");
+      var q = "";
+      var qEl = document.getElementById("vocabSearch");
+      if (qEl) q = (qEl.value || "").toLowerCase().trim();
+      if (!listEl) return;
+
+      var data = state.tab === "verbs" ? A1_VERBS : A1_NOUNS;
+
+      var items = data.filter(function (w) {
+        if (state.cat && w.category !== state.cat) return false;
+        if (!q) return true;
+        var hay = state.tab === "verbs"
+          ? (w.base + " " + w.es + " " + w.ing + " " + w.third).toLowerCase()
+          : (w.singular + " " + w.es + " " + w.plural).toLowerCase();
+        return hay.indexOf(q) > -1;
+      });
+
+      if (!items.length) {
+        listEl.innerHTML = '<div class="ms-sub">Sin resultados.</div>';
+        return;
+      }
+
+      listEl.innerHTML = items.map(function (w) {
+        if (state.tab === "verbs") {
+          return '<div class="vocab-item" data-vword="' + escapeHtml(w.base) + '">' +
+            '<span class="vocab-say">🔊</span>' +
+            '<span class="vocab-en">' + escapeHtml(w.base) + '</span>' +
+            '<span class="vocab-es">= ' + escapeHtml(w.es) + '</span>' +
+            '<div class="vocab-forms">' +
+              '<div class="vocab-form"><b>-ing:</b> ' + escapeHtml(w.ing) + ' <i>(' + ruleLabel(w.rule_ing) + ')</i></div>' +
+              '<div class="vocab-form"><b>3ª persona:</b> ' + escapeHtml(w.third) + ' <i>(' + ruleLabel(w.rule_third) + ')</i></div>' +
+            '</div>' +
+          '</div>';
+        }
+        return '<div class="vocab-item" data-vword="' + escapeHtml(w.singular) + '">' +
+          '<span class="vocab-say">🔊</span>' +
+          '<span class="vocab-en">' + escapeHtml(w.singular) + (w.plural ? ' / ' + escapeHtml(w.plural) : '') + '</span>' +
+          '<span class="vocab-es">= ' + escapeHtml(w.es) + '</span>' +
+          '<div class="vocab-forms"><div class="vocab-form"><b>Plural:</b> ' + (w.plural ? escapeHtml(w.plural) : '—') + ' <i>(' + ruleLabel(w.rule_plural) + ')</i></div></div>' +
+        '</div>';
+      }).join("");
+    }
+
+    function bindCats() {
+      var catsEl = document.getElementById("vocabCats");
+      if (!catsEl) return;
+      catsEl.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-vcat]");
+        if (!b) return;
+        state.cat = b.getAttribute("data-vcat") || "";
+        renderCats();
+        renderList();
+      });
+    }
+
+    function bindSearch() {
+      var qEl = document.getElementById("vocabSearch");
+      if (!qEl) return;
+      qEl.addEventListener("input", renderList);
+    }
+
+    function bindList() {
+      var listEl = document.getElementById("vocabList");
+      if (!listEl) return;
+      listEl.addEventListener("click", function (e) {
+        var say = e.target.closest(".vocab-say");
+        if (say) {
+          var item = say.closest(".vocab-item");
+          if (item && item.getAttribute("data-vword")) speak(item.getAttribute("data-vword"));
+          return;
+        }
+      });
+    }
+
+    document.querySelectorAll(".vocab-tab").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.tab = btn.getAttribute("data-vtab");
+        document.querySelectorAll(".vocab-tab").forEach(function (b) { b.classList.toggle("active", b === btn); });
+        renderList();
+      });
+    });
+
+    renderCats();
+    renderList();
+    bindCats();
+    bindSearch();
+    bindList();
+
+    document.getElementById("lib2Back").addEventListener("click", function () {
+      list2(lastQ2);
+    });
+  }
+
   function openRule2(id) {
     var rule = findRule2(id) || LIB2[0];
+
+    if (rule.id === "vocab-a1") {
+      renderVocab2();
+      return;
+    }
+
     var hi = hlSection(rule, id);
     var body = document.getElementById("lib2Body");
     var sug = document.getElementById("lib2Suggest");
@@ -9398,3 +10487,2230 @@ function renderSessionsPanel(container) {
     init();
   }
 })();
+
+/* ============================================
+   FORMATO MAESTRO DE HABILIDADES (BLOQUES R/L/S/W)
+   Cada bloque = Gramatica (TTS + tabla) + Reading(10)
+   + Listening(10) + Speaking(10) + Writing(10).
+   Voz: narrador en espanol, AURIX en ingles.
+   Regla #9: todo ingles siempre con su traduccion.
+============================================ */
+
+var MB_PENDING = [
+  { id: "N1-B1", titulo: "Números" },
+  { id: "N1-B2", titulo: "Animales" },
+  { id: "N1-B3", titulo: "Frutas y colores" },
+  { id: "N1-B4", titulo: "Días y meses" },
+  { id: "N1-B5", titulo: "Pronombres" },
+  { id: "N1-B6", titulo: "Saludos" },
+  { id: "N1-B7", titulo: "Preguntas DO / DOES" },
+  { id: "N1-B8", titulo: "Preguntas continuo AM / IS / ARE + -ING" },
+  { id: "N1-B9", titulo: "Repaso mezclado de negación" }
+];
+
+var MASTER_BLOCKS = [
+  {
+    id: "N1-B10",
+    key: "b10",
+    titulo: "Preposiciones de lugar: IN / ON / AT",
+    opciones: ["in", "on", "at"],
+    palabras: [
+      { en: "in", es: "dentro de / en (espacios cerrados)" },
+      { en: "on", es: "sobre / en (superficies)" },
+      { en: "at", es: "en (punto específico)" }
+    ],
+    regla: "En español usamos UNA palabra, \"en\". En inglés hay TRES: in, on, at. Por eso NO traduzcas literal: aprende bloques fijos. IN = espacios cerrados (dentro de). ON = superficies (sobre). AT = punto específico.",
+    guion: "Bloque 10. Preposiciones de lugar: in, on, at. Atención: en español usamos una sola palabra, en. En inglés hay tres: in, on, at. Por eso no traduzcas literal. Aprende bloques fijos. Bloque IN: espacios cerrados o dentro de. **\"In the city\"**, en la ciudad. **\"In the library\"**, en la biblioteca. **\"In the office\"**, en la oficina. **\"In the house\"**, en la casa. Bloque ON: superficies, sobre. **\"On the table\"**, sobre la mesa. **\"On the computer\"**, sobre la computadora. **\"On the book\"**, sobre el libro. **\"On the bus\"**, en el autobús. Bloque AT: punto específico. **\"At the store\"**, en la tienda. **\"At the party\"**, en la fiesta. Regla de oro: el pronombre siempre se escribe. Nunca digas \"is in the library\". Di: **\"He is in the library\"**, él está en la biblioteca. **\"It is on the table\"**, eso está sobre la mesa. **\"They are at the party\"**, ellos están en la fiesta. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "the library", es: "la biblioteca", ans: "in" },
+      { en: "the table", es: "la mesa", ans: "on" },
+      { en: "the city", es: "la ciudad", ans: "in" },
+      { en: "the computer", es: "la computadora", ans: "on" },
+      { en: "the store", es: "la tienda", ans: "at" },
+      { en: "the car", es: "el carro", ans: "in" },
+      { en: "the party", es: "la fiesta", ans: "at" },
+      { en: "the office", es: "la oficina", ans: "in" },
+      { en: "the book", es: "el libro", ans: "on" },
+      { en: "the bus", es: "el autobús", ans: "on" }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. I am in the library.", es: "Yo soy un estudiante. Yo estoy en la biblioteca." },
+        { en: "The book is on the table. The pen is on the computer.", es: "El libro está sobre la mesa. El bolígrafo está sobre la computadora." },
+        { en: "He is a citizen. He is at the store.", es: "Él es un ciudadano. Él está en la tienda." },
+        { en: "She is a teacher. She is in the office.", es: "Ella es una maestra. Ella está en la oficina." },
+        { en: "We are in the city. They are at the party. The friends are on the bus.", es: "Nosotros estamos en la ciudad. Ellos están en la fiesta. Los amigos están en el autobús." }
+      ],
+      preguntas: [
+        { q: "Where is the student?", qes: "¿Dónde está el estudiante?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "at the store", es: "en la tienda" }, { t: "on the bus", es: "en el autobús" }], ans: 0 },
+        { q: "Where is the book?", qes: "¿Dónde está el libro?", opts: [{ t: "on the table", es: "sobre la mesa" }, { t: "in the table", es: "dentro de la mesa" }, { t: "at the table", es: "en la mesa (punto)" }], ans: 0 },
+        { q: "Where is the pen?", qes: "¿Dónde está el bolígrafo?", opts: [{ t: "in the computer", es: "dentro de la computadora" }, { t: "on the computer", es: "sobre la computadora" }, { t: "at the computer", es: "en la computadora (punto)" }], ans: 1 },
+        { q: "Where is the citizen?", qes: "¿Dónde está el ciudadano?", opts: [{ t: "at the store", es: "en la tienda" }, { t: "on the store", es: "sobre la tienda" }, { t: "in the bus", es: "en el autobús" }], ans: 0 },
+        { q: "Where is the teacher?", qes: "¿Dónde está la maestra?", opts: [{ t: "in the office", es: "en la oficina" }, { t: "at the office", es: "en la oficina (punto)" }, { t: "on the office", es: "sobre la oficina" }], ans: 0 },
+        { q: "Where are we?", qes: "¿Dónde estamos?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "on the city", es: "sobre la ciudad" }, { t: "at the city", es: "en la ciudad (punto)" }], ans: 0 },
+        { q: "Where are they?", qes: "¿Dónde están ellos?", opts: [{ t: "in the party", es: "dentro de la fiesta" }, { t: "at the party", es: "en la fiesta" }, { t: "on the party", es: "sobre la fiesta" }], ans: 1 },
+        { q: "Where are the friends?", qes: "¿Dónde están los amigos?", opts: [{ t: "on the bus", es: "en el autobús" }, { t: "in the bus", es: "dentro del autobús" }, { t: "at the bus", es: "en el autobús (punto)" }], ans: 0 },
+        { q: "Is the book on the computer?", qes: "¿Está el libro sobre la computadora?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Is she in the office?", qes: "¿Está ella en la oficina?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 }
+      ]
+    },
+    listening: [
+      { audio: "He is in the car.", q: "Where is he?", qes: "¿Dónde está él?", opts: [{ t: "in the car", es: "en el carro" }, { t: "at the store", es: "en la tienda" }], ans: 0 },
+      { audio: "The book is on the table.", q: "Where is the book?", qes: "¿Dónde está el libro?", opts: [{ t: "on the table", es: "sobre la mesa" }, { t: "in the library", es: "en la biblioteca" }], ans: 0 },
+      { audio: "She is at the store.", q: "Where is she?", qes: "¿Dónde está ella?", opts: [{ t: "at the store", es: "en la tienda" }, { t: "in the office", es: "en la oficina" }], ans: 0 },
+      { audio: "They are at the party.", q: "Where are they?", qes: "¿Dónde están?", opts: [{ t: "on the bus", es: "en el autobús" }, { t: "at the party", es: "en la fiesta" }], ans: 1 },
+      { audio: "We are in the city.", q: "Where are we?", qes: "¿Dónde estamos?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "at the party", es: "en la fiesta" }], ans: 0 },
+      { audio: "The pen is on the computer.", q: "Where is the pen?", qes: "¿Dónde está el bolígrafo?", opts: [{ t: "on the computer", es: "sobre la computadora" }, { t: "on the table", es: "sobre la mesa" }], ans: 0 },
+      { audio: "I am on the bus.", q: "Where is the person?", qes: "¿Dónde está la persona?", opts: [{ t: "in the house", es: "en la casa" }, { t: "on the bus", es: "en el autobús" }], ans: 1 },
+      { audio: "He is in the office.", q: "Where is he?", qes: "¿Dónde está él?", opts: [{ t: "in the office", es: "en la oficina" }, { t: "at the store", es: "en la tienda" }], ans: 0 },
+      { audio: "She is in the house.", q: "Where is she?", qes: "¿Dónde está ella?", opts: [{ t: "in the house", es: "en la casa" }, { t: "on the house", es: "sobre la casa" }], ans: 0 },
+      { audio: "It is on the book.", q: "Where is it?", qes: "¿Dónde está?", opts: [{ t: "on the book", es: "sobre el libro" }, { t: "in the book", es: "dentro del libro" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "I am in the library.", es: "Estoy en la biblioteca." },
+      { tipo: "Repetición", en: "The book is on the table.", es: "El libro está sobre la mesa." },
+      { tipo: "Repetición", en: "He is at the store.", es: "Él está en la tienda." },
+      { tipo: "Lectura", en: "She is in the office.", es: "Ella está en la oficina." },
+      { tipo: "Lectura", en: "They are at the party.", es: "Ellos están en la fiesta." },
+      { tipo: "Lectura", en: "We are on the bus.", es: "Nosotros estamos en el autobús." },
+      { tipo: "Respuesta", prompt: "Where is the book?", promptEs: "¿Dónde está el libro?", en: "The book is on the table.", es: "El libro está sobre la mesa." },
+      { tipo: "Respuesta", prompt: "Where is she?", promptEs: "¿Dónde está ella?", en: "She is in the library.", es: "Ella está en la biblioteca." },
+      { tipo: "Producción", prompt: "Di dónde estás tú (contexto estudiante).", en: "I am in the class.", es: "Estoy en la clase." },
+      { tipo: "Producción", prompt: "Di dónde está un ciudadano.", en: "He is at the store.", es: "Él está en la tienda." }
+    ],
+    writing: [
+      { es: "Él está en la biblioteca.", en: ["he is in the library"] },
+      { es: "El libro está sobre la mesa.", en: ["the book is on the table"] },
+      { es: "Nosotros estamos en la ciudad.", en: ["we are in the city"] },
+      { es: "El bolígrafo está sobre la computadora.", en: ["the pen is on the computer"] },
+      { es: "Ella está en la tienda.", en: ["she is at the store"] },
+      { es: "Ellos están en la fiesta.", en: ["they are at the party"] },
+      { es: "Yo estoy en el carro.", en: ["i am in the car"] },
+      { es: "Tú estás en el autobús.", en: ["you are on the bus"] },
+      { es: "Ella está en la oficina.", en: ["she is in the office"] },
+      { es: "Eso está sobre el libro.", en: ["it is on the book"] }
+    ]
+  },
+  {
+    id: "N1-B11",
+    key: "b11",
+    titulo: "Preposiciones de tiempo: IN / ON / AT",
+    opciones: ["in", "on", "at"],
+    palabras: [
+      { en: "in", es: "periodos largos (meses, estaciones, la mañana)" },
+      { en: "on", es: "días de la semana" },
+      { en: "at", es: "punto específico (la noche)" }
+    ],
+    regla: "Mismas palabras que en el lugar: in, on, at. IN = periodos largos (meses, estaciones, \"la mañana\"). ON = días de la semana. AT = punto específico; la noche es un punto: at night. No confundas: la mañana es IN, pero la noche es AT. Es un bloque fijo, no se traduce literal.",
+    guion: "Bloque 11. Preposiciones de tiempo. Mismas palabras: in, on, at. Pero ahora con bloques de tiempo. Bloque IN: periodos largos. Meses, estaciones y la mañana. **\"In September\"**, en septiembre. **\"In summer\"**, en verano. **\"In the morning\"**, en la mañana. Bloque ON: días de la semana. **\"On Monday\"**, el lunes. **\"On Mondays\"**, los lunes. Bloque AT: punto específico. La noche es un punto: at night. **\"At night\"**, en la noche. No confundas: la mañana es in, pero la noche es at. Es un bloque fijo, no se traduce literal. **\"I study in the morning\"**, yo estudio en la mañana. **\"He works on Mondays\"**, él trabaja los lunes. **\"She reads at night\"**, ella lee en la noche. Recuerda: pronombre obligatorio siempre. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "Monday", es: "lunes", ans: "on" },
+      { en: "September", es: "septiembre", ans: "in" },
+      { en: "night", es: "noche", ans: "at" },
+      { en: "the morning", es: "la mañana", ans: "in" },
+      { en: "summer", es: "verano", ans: "in" },
+      { en: "Mondays", es: "los lunes", ans: "on" }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. I study in the morning. I do not study at night.", es: "Yo soy un estudiante. Yo estudio en la mañana. Yo no estudio en la noche." },
+        { en: "He is a citizen. He works on Mondays.", es: "Él es un ciudadano. Él trabaja los lunes." },
+        { en: "She is a teacher. She reads at night.", es: "Ella es una maestra. Ella lee en la noche." },
+        { en: "We travel in September. They play in summer. The class is on Monday.", es: "Nosotros viajamos en septiembre. Ellos juegan en verano. La clase es el lunes." }
+      ],
+      preguntas: [
+        { q: "When does the student study?", qes: "¿Cuándo estudia el estudiante?", opts: [{ t: "in the morning", es: "en la mañana" }, { t: "at night", es: "en la noche" }, { t: "on Monday", es: "el lunes" }], ans: 0 },
+        { q: "Does the student study at night?", qes: "¿Estudia el estudiante en la noche?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "When does he work?", qes: "¿Cuándo trabaja él?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "in summer", es: "en verano" }, { t: "at night", es: "en la noche" }], ans: 0 },
+        { q: "When does she read?", qes: "¿Cuándo lee ella?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }, { t: "on summer", es: "en verano" }], ans: 0 },
+        { q: "When do we travel?", qes: "¿Cuándo viajamos?", opts: [{ t: "in September", es: "en septiembre" }, { t: "on September", es: "en septiembre (día)" }, { t: "at September", es: "en septiembre (punto)" }], ans: 0 },
+        { q: "When do they play?", qes: "¿Cuándo juegan ellos?", opts: [{ t: "in summer", es: "en verano" }, { t: "at summer", es: "en verano (punto)" }, { t: "on night", es: "en noche" }], ans: 0 },
+        { q: "When is the class?", qes: "¿Cuándo es la clase?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "in Monday", es: "en lunes" }, { t: "at Monday", es: "en lunes (punto)" }], ans: 0 },
+        { q: "Does he work on Mondays?", qes: "¿Trabaja él los lunes?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Do they play in September?", qes: "¿Juegan ellos en septiembre?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Does she read in the morning?", qes: "¿Lee ella en la mañana?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "I work on Mondays.", q: "When do I work?", qes: "¿Cuándo trabajo?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "She studies in the morning.", q: "When does she study?", qes: "¿Cuándo estudia ella?", opts: [{ t: "in the morning", es: "en la mañana" }, { t: "on Monday", es: "el lunes" }], ans: 0 },
+      { audio: "He reads at night.", q: "When does he read?", qes: "¿Cuándo lee él?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }], ans: 0 },
+      { audio: "We travel in September.", q: "When do we travel?", qes: "¿Cuándo viajamos?", opts: [{ t: "in September", es: "en septiembre" }, { t: "on Mondays", es: "los lunes" }], ans: 0 },
+      { audio: "They swim in summer.", q: "When do they swim?", qes: "¿Cuándo nadan?", opts: [{ t: "in summer", es: "en verano" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "The class is on Monday.", q: "When is the class?", qes: "¿Cuándo es la clase?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "in summer", es: "en verano" }], ans: 0 },
+      { audio: "I do not work at night.", q: "When do I NOT work?", qes: "¿Cuándo NO trabajo?", opts: [{ t: "at night", es: "en la noche" }, { t: "on Mondays", es: "los lunes" }], ans: 0 },
+      { audio: "He runs in the morning.", q: "When does he run?", qes: "¿Cuándo corre él?", opts: [{ t: "in the morning", es: "en la mañana" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "She watches television at night.", q: "When does she watch television?", qes: "¿Cuándo mira TV?", opts: [{ t: "at night", es: "en la noche" }, { t: "in September", es: "en septiembre" }], ans: 0 },
+      { audio: "We play on Mondays.", q: "When do we play?", qes: "¿Cuándo jugamos?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "in the morning", es: "en la mañana" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "I work on Mondays.", es: "Trabajo los lunes." },
+      { tipo: "Repetición", en: "She studies in the morning.", es: "Ella estudia en la mañana." },
+      { tipo: "Repetición", en: "He reads at night.", es: "Él lee en la noche." },
+      { tipo: "Lectura", en: "We travel in September.", es: "Viajamos en septiembre." },
+      { tipo: "Lectura", en: "They swim in summer.", es: "Ellos nadan en verano." },
+      { tipo: "Lectura", en: "The class is on Monday.", es: "La clase es el lunes." },
+      { tipo: "Respuesta", prompt: "When do you work?", promptEs: "¿Cuándo trabajas?", en: "I work on Mondays.", es: "Trabajo los lunes." },
+      { tipo: "Respuesta", prompt: "When do you study?", promptEs: "¿Cuándo estudias?", en: "I study in the morning.", es: "Estudio en la mañana." },
+      { tipo: "Producción", prompt: "Di cuándo estudias tú.", en: "I study in the morning.", es: "Estudio en la mañana." },
+      { tipo: "Producción", prompt: "Di cuándo trabaja un ciudadano.", en: "He works on Mondays.", es: "Él trabaja los lunes." }
+    ],
+    writing: [
+      { es: "Él trabaja los lunes.", en: ["he works on mondays"] },
+      { es: "Ella estudia en la mañana.", en: ["she studies in the morning"] },
+      { es: "Nosotros no miramos televisión en la noche.", en: ["we do not watch television at night", "we don't watch television at night"] },
+      { es: "Ellos viajan en septiembre.", en: ["they travel in september"] },
+      { es: "Yo nado en verano.", en: ["i swim in summer"] },
+      { es: "¿Trabajas tú los lunes?", en: ["do you work on mondays"] },
+      { es: "Ella lee en la noche.", en: ["she reads at night"] },
+      { es: "Él corre en la mañana.", en: ["he runs in the morning"] },
+      { es: "Nosotros jugamos los lunes.", en: ["we play on mondays"] },
+      { es: "Él no trabaja en verano.", en: ["he does not work in summer"] }
+    ]
+  },
+  {
+    id: "N1-B12",
+    key: "b12",
+    titulo: "Pronombres de objeto: ME / YOU / HIM / HER / IT / US / THEM",
+    opciones: ["me", "you", "him", "her", "it", "us", "them"],
+    palabras: [
+      { en: "me", es: "a mí / me" },
+      { en: "you", es: "a ti / a ustedes / te" },
+      { en: "him", es: "a él / lo" },
+      { en: "her", es: "a ella / la" },
+      { en: "it", es: "eso / lo" },
+      { en: "us", es: "a nosotros / nos" },
+      { en: "them", es: "a ellos / a ellas / los" }
+    ],
+    regla: "Recuerda la regla de oro: en inglés el sujeto SIEMPRE se escribe. Pero el pronombre de OBJETO es la persona o cosa que RECIBE la acción del verbo y va DESPUÉS del verbo. I cambia a me; he cambia a him; she cambia a her; we cambia a us; they cambia a them. You y it NO cambian.",
+    guion: "Bloque 12. Pronombres de objeto. Recuerda la regla de oro: en inglés el sujeto siempre se escribe. Pero hoy vemos el OBJETO: la persona o cosa que recibe la acción del verbo. Cuando yo recibe la acción, cambia a me. **\"Me\"**, a mí. Cuando tú o ustedes reciben la acción, se queda you. **\"You\"**, a ti o a ustedes. Cuando él recibe la acción, cambia a him. **\"Him\"**, a él. Cuando ella recibe la acción, cambia a her. **\"Her\"**, a ella. Cuando eso recibe la acción, se queda it. **\"It\"**, eso. Cuando nosotros recibe la acción, cambia a us. **\"Us\"**, a nosotros. Cuando ellos o ellas reciben la acción, cambia a them. **\"Them\"**, a ellos o a ellas. Tabla de cambio: I cambia a me. He cambia a him. She cambia a her. We cambia a us. They cambia a them. You y it no cambian. Ejemplos: el objeto va después del verbo. **\"She teaches me\"**, ella me enseña a mí. **\"I watch him\"**, yo lo miro a él. **\"He watches her\"**, él la mira a ella. **\"We need it\"**, nosotros necesitamos eso. **\"You teach us\"**, tú nos enseñas a nosotros. **\"They watch them\"**, ellos los miran a ellos. Regla de oro: el sujeto siempre se escribe. Nunca digas solo teaches me. Di: **\"She teaches me\"**, ella me enseña a mí. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "I", es: "yo", ans: "me" },
+      { en: "you", es: "tú", ans: "you" },
+      { en: "he", es: "él", ans: "him" },
+      { en: "she", es: "ella", ans: "her" },
+      { en: "it", es: "eso", ans: "it" },
+      { en: "we", es: "nosotros", ans: "us" },
+      { en: "they", es: "ellos", ans: "them" },
+      { en: "She teaches ___", es: "a mí", ans: "me" },
+      { en: "I watch ___", es: "a él", ans: "him" },
+      { en: "He watches ___", es: "a ella", ans: "her" },
+      { en: "We need ___", es: "eso", ans: "it" },
+      { en: "You teach ___", es: "a nosotros", ans: "us" },
+      { en: "They watch ___", es: "a ellos", ans: "them" }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. The teacher teaches me. I watch the teacher. I watch him.", es: "Yo soy un estudiante. El maestro me enseña a mí. Yo miro al maestro. Yo lo miro a él." },
+        { en: "He is a citizen. He needs the book. He reads it.", es: "Él es un ciudadano. Él necesita el libro. Él lo lee." },
+        { en: "She is a teacher. The students watch her.", es: "Ella es una maestra. Los estudiantes la miran a ella." },
+        { en: "We are friends. They watch us. We watch them.", es: "Nosotros somos amigos. Ellos nos miran a nosotros. Nosotros los miramos a ellos." }
+      ],
+      preguntas: [
+        { q: "Who teaches me?", qes: "¿Quién me enseña a mí?", opts: [{ t: "the teacher", es: "el maestro" }, { t: "the citizen", es: "el ciudadano" }, { t: "the student", es: "el estudiante" }], ans: 0 },
+        { q: "Who do I watch?", qes: "¿A quién miro yo?", opts: [{ t: "him", es: "a él" }, { t: "her", es: "a ella" }, { t: "them", es: "a ellos" }], ans: 0 },
+        { q: "What does he need?", qes: "¿Qué necesita él?", opts: [{ t: "the book", es: "el libro" }, { t: "the pen", es: "el bolígrafo" }, { t: "the computer", es: "la computadora" }], ans: 0 },
+        { q: "What does he read?", qes: "¿Qué lee él?", opts: [{ t: "it", es: "eso / el libro" }, { t: "me", es: "a mí" }, { t: "us", es: "a nosotros" }], ans: 0 },
+        { q: "Who do the students watch?", qes: "¿A quién miran los estudiantes?", opts: [{ t: "her", es: "a ella" }, { t: "him", es: "a él" }, { t: "me", es: "a mí" }], ans: 0 },
+        { q: "Are we friends?", qes: "¿Somos amigos?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Who watches us?", qes: "¿Quién nos mira a nosotros?", opts: [{ t: "they", es: "ellos" }, { t: "he", es: "él" }, { t: "it", es: "eso" }], ans: 0 },
+        { q: "Who do we watch?", qes: "¿A quién miramos nosotros?", opts: [{ t: "them", es: "a ellos" }, { t: "us", es: "a nosotros" }, { t: "me", es: "a mí" }], ans: 0 },
+        { q: "Is she a student?", qes: "¿Es ella una estudiante?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Does he read the book?", qes: "¿Lee él el libro?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 }
+      ]
+    },
+    listening: [
+      { audio: "She teaches me.", q: "Who teaches?", qes: "¿Quién enseña?", opts: [{ t: "she", es: "ella" }, { t: "he", es: "él" }, { t: "they", es: "ellos" }], ans: 0 },
+      { audio: "I watch him.", q: "Who do I watch?", qes: "¿A quién miro?", opts: [{ t: "him", es: "a él" }, { t: "her", es: "a ella" }, { t: "us", es: "a nosotros" }], ans: 0 },
+      { audio: "He reads it.", q: "What does he read?", qes: "¿Qué lee él?", opts: [{ t: "it", es: "eso" }, { t: "them", es: "a ellos" }, { t: "me", es: "a mí" }], ans: 0 },
+      { audio: "They watch us.", q: "Who watches us?", qes: "¿Quién nos mira?", opts: [{ t: "they", es: "ellos" }, { t: "she", es: "ella" }, { t: "I", es: "yo" }], ans: 0 },
+      { audio: "We watch them.", q: "Who do we watch?", qes: "¿A quién miramos?", opts: [{ t: "them", es: "a ellos" }, { t: "him", es: "a él" }, { t: "it", es: "eso" }], ans: 0 },
+      { audio: "He needs the book.", q: "What does he need?", qes: "¿Qué necesita?", opts: [{ t: "the book", es: "el libro" }, { t: "the pen", es: "el bolígrafo" }, { t: "water", es: "agua" }], ans: 0 },
+      { audio: "The students watch her.", q: "Who do the students watch?", qes: "¿A quién miran?", opts: [{ t: "her", es: "a ella" }, { t: "him", es: "a él" }, { t: "them", es: "a ellos" }], ans: 0 },
+      { audio: "I like it.", q: "What do I like?", qes: "¿Qué me gusta?", opts: [{ t: "it", es: "eso" }, { t: "him", es: "él" }, { t: "her", es: "ella" }], ans: 0 },
+      { audio: "She watches them.", q: "Who does she watch?", qes: "¿A quién mira ella?", opts: [{ t: "them", es: "a ellos" }, { t: "us", es: "a nosotros" }, { t: "me", es: "a mí" }], ans: 0 },
+      { audio: "You teach us.", q: "Who teaches us?", qes: "¿Quién nos enseña?", opts: [{ t: "you", es: "tú" }, { t: "they", es: "ellos" }, { t: "he", es: "él" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "She teaches me.", es: "Ella me enseña a mí." },
+      { tipo: "Repetición", en: "I watch him.", es: "Yo lo miro a él." },
+      { tipo: "Repetición", en: "We need it.", es: "Nosotros necesitamos eso." },
+      { tipo: "Lectura", en: "The students watch her.", es: "Los estudiantes la miran a ella." },
+      { tipo: "Lectura", en: "They watch us. We watch them.", es: "Ellos nos miran. Nosotros los miramos." },
+      { tipo: "Lectura", en: "He needs the book. He reads it.", es: "Él necesita el libro. Él lo lee." },
+      { tipo: "Respuesta", prompt: "Who teaches you?", promptEs: "¿Quién te enseña a ti?", en: "The teacher teaches me.", es: "El maestro me enseña." },
+      { tipo: "Respuesta", prompt: "What do you read?", promptEs: "¿Qué lees tú?", en: "I read it.", es: "Lo leo." },
+      { tipo: "Producción", prompt: "Di una frase con \"me\" (a mí).", en: "She teaches me.", es: "Ella me enseña a mí." },
+      { tipo: "Producción", prompt: "Di una frase con \"them\" (a ellos).", en: "I watch them.", es: "Yo los miro a ellos." }
+    ],
+    writing: [
+      { es: "Ella me enseña a mí.", en: ["she teaches me"] },
+      { es: "Yo lo miro a él.", en: ["i watch him"] },
+      { es: "Él la mira a ella.", en: ["he watches her"] },
+      { es: "Nosotros necesitamos eso.", en: ["we need it"] },
+      { es: "Tú nos enseñas a nosotros.", en: ["you teach us"] },
+      { es: "Ellos los miran a ellos.", en: ["they watch them"] },
+      { es: "Él necesita el libro. Él lo lee.", en: ["he needs the book he reads it"] },
+      { es: "Los estudiantes la miran a ella.", en: ["the students watch her"] },
+      { es: "A mí me gusta eso.", en: ["i like it"] },
+      { es: "Ellos nos miran a nosotros.", en: ["they watch us"] }
+    ]
+  },
+  {
+    id: "N1-B13",
+    key: "b13",
+    titulo: "Adjetivos posesivos: MY / YOUR / HIS / HER / ITS / OUR / THEIR",
+    opciones: ["my", "your", "his", "her", "its", "our", "their"],
+    palabras: [
+      { en: "my", es: "mi / mis" },
+      { en: "your", es: "tu / tus" },
+      { en: "his", es: "su (de él)" },
+      { en: "her", es: "su (de ella)" },
+      { en: "its", es: "su (de eso / de una cosa)" },
+      { en: "our", es: "nuestro / nuestra" },
+      { en: "their", es: "su (de ellos / de ellas)" },
+      { en: "whose", es: "de quién (para preguntar posesión)" }
+    ],
+    regla: "Cada pronombre tiene su posesivo. Punto crítico para hispanohablantes: en español usamos UNA palabra, \"su\". En inglés \"su\" se divide en CUATRO formas: his si el dueño es él; her si la dueña es ella; its si el dueño es una cosa; their si los dueños son ellos. Nunca traduzcas \"su\" literal: mira SIEMPRE quién es el dueño. El posesivo va ANTES del sustantivo. Y recuerda: el sujeto siempre se escribe.",
+    guion: "Bloque 13. Adjetivos posesivos: las palabras para decir mi, tu, su, nuestro. Cada pronombre tiene su posesivo. Escucha la tabla de cambio. **\"My\"**, mi o mis. **\"Your\"**, tu o tus. **\"His\"**, su, de él. **\"Her\"**, su, de ella. **\"Its\"**, su, de eso. **\"Our\"**, nuestro o nuestra. **\"Their\"**, su, de ellos o de ellas. Atención, punto crítico para hispanohablantes. En español usamos una palabra: su. En inglés, su se divide en cuatro formas: his si el dueño es él; her si la dueña es ella; its si el dueño es una cosa; their si los dueños son ellos. Nunca traduzcas su literal. Mira siempre quién es el dueño. Ejemplos: el posesivo va antes del sustantivo. **\"My book is on the table\"**, mi libro está sobre la mesa. **\"Your car is small\"**, tu carro es pequeño. **\"His class is on Monday\"**, su clase de él es el lunes. **\"Her library is big\"**, su biblioteca de ella es grande. **\"Its park is big\"**, su parque de eso es grande. **\"Our apartment is in the city\"**, nuestro departamento está en la ciudad. **\"Their homework is in the library\"**, su tarea de ellos está en la biblioteca. Regla de oro: el sujeto siempre se escribe. My book is on the table ya tiene sujeto: my book. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "I", es: "yo", ans: "my" },
+      { en: "you", es: "tú", ans: "your" },
+      { en: "he", es: "él", ans: "his" },
+      { en: "she", es: "ella", ans: "her" },
+      { en: "it", es: "eso", ans: "its" },
+      { en: "we", es: "nosotros", ans: "our" },
+      { en: "they", es: "ellos", ans: "their" },
+      { en: "He is a citizen. ___ car is small.", es: "su de él", ans: "his" },
+      { en: "She is a teacher. ___ class is on Monday.", es: "su de ella", ans: "her" },
+      { en: "I am a student. ___ book is on the table.", es: "mi", ans: "my" },
+      { en: "We are friends. ___ apartment is in the city.", es: "nuestro", ans: "our" },
+      { en: "They are students. ___ homework is in the library.", es: "su de ellos", ans: "their" },
+      { en: "It is a city. ___ park is big.", es: "su de eso", ans: "its" }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. My book is on the table. My pen is on the computer.", es: "Yo soy un estudiante. Mi libro está sobre la mesa. Mi bolígrafo está sobre la computadora." },
+        { en: "He is a citizen. His car is small. His house is in the city.", es: "Él es un ciudadano. Su carro es pequeño. Su casa está en la ciudad." },
+        { en: "She is a teacher. Her class is on Monday. Her library is big.", es: "Ella es una maestra. Su clase es el lunes. Su biblioteca es grande." },
+        { en: "We are friends. Our apartment is in the city.", es: "Nosotros somos amigos. Nuestro departamento está en la ciudad." },
+        { en: "They are students. Their homework is in the library.", es: "Ellos son estudiantes. Su tarea está en la biblioteca." }
+      ],
+      preguntas: [
+        { q: "Whose book is on the table?", qes: "¿De quién es el libro sobre la mesa?", opts: [{ t: "my", es: "mi, del estudiante" }, { t: "his", es: "de él" }, { t: "her", es: "de ella" }], ans: 0 },
+        { q: "Where is my pen?", qes: "¿Dónde está mi bolígrafo?", opts: [{ t: "on the computer", es: "sobre la computadora" }, { t: "on the table", es: "sobre la mesa" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+        { q: "Whose car is small?", qes: "¿De quién es el carro pequeño?", opts: [{ t: "her", es: "de ella" }, { t: "his", es: "de él" }, { t: "our", es: "nuestro" }], ans: 1 },
+        { q: "Where is his house?", qes: "¿Dónde está su casa de él?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "in the park", es: "en el parque" }, { t: "on the bus", es: "en el autobús" }], ans: 0 },
+        { q: "When is her class?", qes: "¿Cuándo es su clase de ella?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "at night", es: "en la noche" }, { t: "in summer", es: "en verano" }], ans: 0 },
+        { q: "Is her library big?", qes: "¿Es grande su biblioteca de ella?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Whose apartment is in the city?", qes: "¿De quién es el departamento en la ciudad?", opts: [{ t: "our", es: "nuestro" }, { t: "their", es: "de ellos" }, { t: "my", es: "mi" }], ans: 0 },
+        { q: "Where is their homework?", qes: "¿Dónde está su tarea de ellos?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the class", es: "en la clase" }, { t: "on the table", es: "sobre la mesa" }], ans: 0 },
+        { q: "Are they students?", qes: "¿Son ellos estudiantes?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Is his car big?", qes: "¿Es grande su carro de él?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "My book is on the table.", q: "Where is the book?", qes: "¿Dónde está el libro?", opts: [{ t: "on the table", es: "sobre la mesa" }, { t: "on the computer", es: "sobre la computadora" }], ans: 0 },
+      { audio: "His car is small.", q: "Whose car is small?", qes: "¿De quién es el carro pequeño?", opts: [{ t: "his", es: "de él" }, { t: "her", es: "de ella" }], ans: 0 },
+      { audio: "Her class is on Monday.", q: "When is her class?", qes: "¿Cuándo es su clase?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "Our apartment is in the city.", q: "Where is our apartment?", qes: "¿Dónde está nuestro depto.?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "Their homework is in the library.", q: "Where is their homework?", qes: "¿Dónde está su tarea?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the class", es: "en la clase" }], ans: 0 },
+      { audio: "Your pen is on the computer.", q: "Where is your pen?", qes: "¿Dónde está tu bolígrafo?", opts: [{ t: "on the computer", es: "sobre la computadora" }, { t: "on the table", es: "sobre la mesa" }], ans: 0 },
+      { audio: "Its park is big.", q: "What is big?", qes: "¿Qué es grande?", opts: [{ t: "its park", es: "su parque de eso" }, { t: "its house", es: "su casa de eso" }], ans: 0 },
+      { audio: "My house is in the city.", q: "Where is my house?", qes: "¿Dónde está mi casa?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "on the bus", es: "en el autobús" }], ans: 0 },
+      { audio: "His house is big.", q: "Is his house big?", qes: "¿Es grande su casa?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+      { audio: "Our class is on Monday.", q: "When is our class?", qes: "¿Cuándo es nuestra clase?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "in summer", es: "en verano" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "My book is on the table.", es: "Mi libro está sobre la mesa." },
+      { tipo: "Repetición", en: "His car is small.", es: "Su carro de él es pequeño." },
+      { tipo: "Repetición", en: "Her class is on Monday.", es: "Su clase de ella es el lunes." },
+      { tipo: "Lectura", en: "Our apartment is in the city.", es: "Nuestro departamento está en la ciudad." },
+      { tipo: "Lectura", en: "Their homework is in the library.", es: "Su tarea de ellos está en la biblioteca." },
+      { tipo: "Lectura", en: "Your pen is on the computer.", es: "Tu bolígrafo está sobre la computadora." },
+      { tipo: "Respuesta", prompt: "Where is your book?", promptEs: "¿Dónde está tu libro?", en: "My book is on the table.", es: "Mi libro está sobre la mesa." },
+      { tipo: "Respuesta", prompt: "When is your class?", promptEs: "¿Cuándo es tu clase?", en: "My class is on Monday.", es: "Mi clase es el lunes." },
+      { tipo: "Producción", prompt: "Di una frase con \"my\" (mi).", en: "My pen is on the computer.", es: "Mi bolígrafo está sobre la computadora." },
+      { tipo: "Producción", prompt: "Di una frase con \"our\" (nuestro).", en: "Our library is big.", es: "Nuestra biblioteca es grande." }
+    ],
+    writing: [
+      { es: "Mi libro está sobre la mesa.", en: ["my book is on the table"] },
+      { es: "Tu carro es pequeño.", en: ["your car is small"] },
+      { es: "Su clase de él es el lunes.", en: ["his class is on monday"] },
+      { es: "Su biblioteca de ella es grande.", en: ["her library is big"] },
+      { es: "Nuestro departamento está en la ciudad.", en: ["our apartment is in the city"] },
+      { es: "Su tarea de ellos está en la biblioteca.", en: ["their homework is in the library"] },
+      { es: "Mi bolígrafo está sobre la computadora.", en: ["my pen is on the computer"] },
+      { es: "Su casa de él está en la ciudad.", en: ["his house is in the city"] },
+      { es: "Nuestra clase es en la mañana.", en: ["our class is in the morning"] },
+      { es: "Sus amigos de ellos están en el parque.", en: ["their friends are in the park"] }
+    ]
+  },
+  {
+    id: "N1-B15",
+    key: "b15",
+    titulo: "There is / There are (hay)",
+    opciones: ["there is", "there are", "Yes, there is.", "Yes, there are.", "No, there isn't.", "No, there aren't."],
+    palabras: [
+      { en: "there is", es: "hay (singular / uno)" },
+      { en: "there are", es: "hay (plural / varios)" },
+      { en: "there is not (isn't)", es: "no hay (singular)" },
+      { en: "there are not (aren't)", es: "no hay (plural)" },
+      { en: "Is there...?", es: "¿hay...? (singular)" },
+      { en: "Are there...?", es: "¿hay...? (plural)" }
+    ],
+    regla: "En español, \"hay\" es una sola palabra para todo. En inglés se divide en DOS: THERE IS para singular (uno) y THERE ARE para plural (varios). Misma lógica de bloques de siempre. El negativo: not va después de is o are. La pregunta: is o are van PRIMERO, y las respuestas cortas repiten there. Regla de oro: aquí el sujeto es \"there\" y SIEMPRE se escribe. Nunca digas solo \"is a book\". Di \"There is a book\".",
+    guion: "Bloque 15. Hoy aprendemos a decir hay en inglés: there is y there are. En español, hay es una sola palabra para todo. En inglés se divide en dos: there is para singular; there are para plural. Misma lógica de bloques de siempre. **\"There is a book\"**, hay un libro. **\"There are books\"**, hay libros. Ejemplos: **\"There is a pen on the computer\"**, hay un bolígrafo sobre la computadora. **\"There are students in the library\"**, hay estudiantes en la biblioteca. **\"There is a bus in the city\"**, hay un autobús en la ciudad. **\"There are cars in the city\"**, hay carros en la ciudad. Negativo: not va después de is o are. **\"There is not a book\"**, no hay un libro. **\"There are not books\"**, no hay libros. Preguntas: is o are van primero. Y las respuestas cortas repiten there. **\"Is there a book?\"**, ¿hay un libro? **\"Yes, there is\"**, sí, hay. **\"No, there isn't\"**, no, no hay. **\"Are there students?\"**, ¿hay estudiantes? **\"Yes, there are\"**, sí, hay. **\"No, there aren't\"**, no, no hay. Regla de oro: aquí el sujeto es there. Siempre se escribe. Nunca digas solo is a book. Di: **\"There is a book\"**, hay un libro. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "______ a book on the table.", es: "un libro", ans: "there is" },
+      { en: "______ students in the library.", es: "estudiantes", ans: "there are" },
+      { en: "______ a bus in the city.", es: "un autobús", ans: "there is" },
+      { en: "______ cars in the city.", es: "carros", ans: "there are" },
+      { en: "______ an email on the computer.", es: "un correo", ans: "there is" },
+      { en: "______ books on the table.", es: "libros", ans: "there are" },
+      { en: "______ a party in the house.", es: "una fiesta", ans: "there is" },
+      { en: "______ friends in the park.", es: "amigos", ans: "there are" },
+      { en: "Is there a book?", es: "sí", ans: "Yes, there is." },
+      { en: "Are there students?", es: "no", ans: "No, there aren't." },
+      { en: "Is there a bus?", es: "no", ans: "No, there isn't." },
+      { en: "Are there cars?", es: "sí", ans: "Yes, there are." }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am in the library. There is a book on the table. There are students in the class.", es: "Yo estoy en la biblioteca. Hay un libro sobre la mesa. Hay estudiantes en la clase." },
+        { en: "He is in the city. There is a bus. There are cars in the city. There are friends in the park.", es: "Él está en la ciudad. Hay un autobús. Hay carros en la ciudad. Hay amigos en el parque." },
+        { en: "She is in the apartment. There is a television. There are books on the table. There is not a pen on the computer.", es: "Ella está en el departamento. Hay una televisión. Hay libros sobre la mesa. No hay un bolígrafo sobre la computadora." }
+      ],
+      preguntas: [
+        { q: "Where is the person?", qes: "¿Dónde está la persona?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }, { t: "in the city", es: "en la ciudad" }], ans: 0 },
+        { q: "What is on the table?", qes: "¿Qué hay sobre la mesa?", opts: [{ t: "a book", es: "un libro" }, { t: "a pen", es: "un bolígrafo" }, { t: "a computer", es: "una computadora" }], ans: 0 },
+        { q: "Are there students in the class?", qes: "¿Hay estudiantes en la clase?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Is there a bus in the city?", qes: "¿Hay un autobús en la ciudad?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "What is in the city?", qes: "¿Qué hay en la ciudad?", opts: [{ t: "cars", es: "carros" }, { t: "books", es: "libros" }, { t: "tables", es: "mesas" }], ans: 0 },
+        { q: "Where are the friends?", qes: "¿Dónde hay amigos?", opts: [{ t: "in the park", es: "en el parque" }, { t: "in the class", es: "en la clase" }, { t: "in the office", es: "en la oficina" }], ans: 0 },
+        { q: "Where is she?", qes: "¿Dónde está ella?", opts: [{ t: "in the apartment", es: "en el departamento" }, { t: "in the library", es: "en la biblioteca" }, { t: "in the store", es: "en la tienda" }], ans: 0 },
+        { q: "Is there a television?", qes: "¿Hay una televisión?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Is there a pen on the computer?", qes: "¿Hay un bolígrafo sobre la computadora?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Are there books on the table?", qes: "¿Hay libros sobre la mesa?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 }
+      ]
+    },
+    listening: [
+      { audio: "There is a book on the table.", q: "What is on the table?", qes: "¿Qué hay sobre la mesa?", opts: [{ t: "a book", es: "un libro" }, { t: "a pen", es: "un bolígrafo" }], ans: 0 },
+      { audio: "There are students in the library.", q: "Where are the students?", qes: "¿Dónde hay estudiantes?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "There is a bus in the city.", q: "What is in the city?", qes: "¿Qué hay en la ciudad?", opts: [{ t: "a bus", es: "un autobús" }, { t: "a car", es: "un carro" }], ans: 0 },
+      { audio: "There are cars in the city.", q: "What is in the city?", qes: "¿Qué hay en la ciudad?", opts: [{ t: "cars", es: "carros" }, { t: "buses", es: "autobuses" }], ans: 0 },
+      { audio: "There is not a pen on the computer.", q: "Is there a pen on the computer?", qes: "¿Hay un bolígrafo sobre la computadora?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "Are there books on the table? Yes, there are.", q: "Are there books on the table?", qes: "¿Hay libros sobre la mesa?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+      { audio: "There is a television in the apartment.", q: "Where is the television?", qes: "¿Dónde hay una televisión?", opts: [{ t: "in the apartment", es: "en el depto." }, { t: "in the office", es: "en la oficina" }], ans: 0 },
+      { audio: "There are friends in the park.", q: "Where are the friends?", qes: "¿Dónde hay amigos?", opts: [{ t: "in the park", es: "en el parque" }, { t: "in the class", es: "en la clase" }], ans: 0 },
+      { audio: "Is there a party in the house? No, there isn't.", q: "Is there a party in the house?", qes: "¿Hay una fiesta en la casa?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "There is an exam on Monday.", q: "When is the exam?", qes: "¿Cuándo hay un examen?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "at night", es: "en la noche" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "There is a book on the table.", es: "Hay un libro sobre la mesa." },
+      { tipo: "Repetición", en: "There are students in the library.", es: "Hay estudiantes en la biblioteca." },
+      { tipo: "Repetición", en: "There is not a pen on the computer.", es: "No hay un bolígrafo sobre la computadora." },
+      { tipo: "Lectura", en: "There are cars in the city.", es: "Hay carros en la ciudad." },
+      { tipo: "Lectura", en: "Is there a bus? Yes, there is.", es: "¿Hay un autobús? Sí, hay." },
+      { tipo: "Lectura", en: "Are there books? No, there aren't.", es: "¿Hay libros? No, no hay." },
+      { tipo: "Respuesta", prompt: "Is there a book on the table?", promptEs: "¿Hay un libro sobre la mesa?", en: "Yes, there is.", es: "Sí, hay." },
+      { tipo: "Respuesta", prompt: "Are there students in the class?", promptEs: "¿Hay estudiantes en la clase?", en: "Yes, there are.", es: "Sí, hay." },
+      { tipo: "Producción", prompt: "Di una cosa que hay en la biblioteca (there is).", en: "There is a book in the library.", es: "Hay un libro en la biblioteca." },
+      { tipo: "Producción", prompt: "Di una cosa que hay en la ciudad (there are).", en: "There are cars in the city.", es: "Hay carros en la ciudad." }
+    ],
+    writing: [
+      { es: "Hay un libro sobre la mesa.", en: ["there is a book on the table"] },
+      { es: "Hay estudiantes en la biblioteca.", en: ["there are students in the library"] },
+      { es: "Hay un autobús en la ciudad.", en: ["there is a bus in the city"] },
+      { es: "Hay carros en la ciudad.", en: ["there are cars in the city"] },
+      { es: "No hay un bolígrafo sobre la computadora.", en: ["there is not a pen on the computer"] },
+      { es: "No hay libros en la clase.", en: ["there are not books in the class"] },
+      { es: "¿Hay un examen el lunes?", en: ["is there an exam on monday"] },
+      { es: "Sí, hay.", en: ["yes there is"] },
+      { es: "¿Hay estudiantes en el parque?", en: ["are there students in the park"] },
+      { es: "No, no hay.", en: ["no there aren't"] }
+    ]
+  },
+  {
+    id: "N1-B16",
+    key: "b16",
+    titulo: "Adverbios de frecuencia: ALWAYS / USUALLY / SOMETIMES / NEVER",
+    opciones: ["always", "usually", "sometimes", "never", "I always study.", "He usually works.", "She is always in the library.", "They never eat in the park."],
+    palabras: [
+      { en: "always", es: "siempre (100%)" },
+      { en: "usually", es: "usualmente (~80%)" },
+      { en: "sometimes", es: "a veces (50%)" },
+      { en: "never", es: "nunca (0%)" }
+    ],
+    regla: "Los adverbios de frecuencia dicen QUÉ TAN SEGUIDO haces algo. Regla 1: el adverbio va ANTES del verbo principal (I always study). Regla 2: con el verbo to be, el adverbio va DESPUÉS (She is always in the library). Regla de oro: el pronombre siempre se escribe. El adverbio NUNCA elimina el pronombre.",
+    guion: "Bloque 16. Los adverbios de frecuencia: palabras que dicen qué tan seguido haces algo. Cuatro palabras nuevas. **\"Always\"**, siempre, cien por ciento. **\"Usually\"**, usualmente. **\"Sometimes\"**, a veces. **\"Never\"**, nunca, cero por ciento. Regla uno: el adverbio va ANTES del verbo principal. **\"I always study in the morning\"**, yo siempre estudio en la mañana. **\"He always works on Mondays\"**, él siempre trabaja los lunes. **\"She usually reads at night\"**, ella usualmente lee en la noche. **\"We sometimes play in the park\"**, nosotros a veces jugamos en el parque. **\"They never eat in the library\"**, ellos nunca comen en la biblioteca. Regla dos: con el verbo to be, el adverbio va DESPUÉS. **\"She is always in the library\"**, ella siempre está en la biblioteca. **\"He is never in the park\"**, él nunca está en el parque. Regla de oro: el pronombre siempre se escribe. El adverbio nunca elimina el pronombre. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "siempre", es: "100%", ans: "always" },
+      { en: "nunca", es: "0%", ans: "never" },
+      { en: "a veces", es: "50%", ans: "sometimes" },
+      { en: "usualmente", es: "~80%", ans: "usually" },
+      { en: "I study.", es: "always", ans: "I always study." },
+      { en: "He works.", es: "usually", ans: "He usually works." },
+      { en: "She is in the library.", es: "always", ans: "She is always in the library." },
+      { en: "They eat in the park.", es: "never", ans: "They never eat in the park." }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. I always study in the morning. I never study at night. I usually read books in the library.", es: "Yo soy un estudiante. Yo siempre estudio en la mañana. Yo nunca estudio en la noche. Yo usualmente leo libros en la biblioteca." },
+        { en: "He is a citizen. He always works on Mondays. He sometimes walks in the park. He never watches television at night.", es: "Él es un ciudadano. Él siempre trabaja los lunes. Él a veces camina en el parque. Él nunca mira televisión en la noche." },
+        { en: "She is a teacher. She is always in the office. She usually writes emails. She never eats in the class.", es: "Ella es una maestra. Ella siempre está en la oficina. Ella usualmente escribe correos. Ella nunca come en la clase." },
+        { en: "We are friends. We sometimes play in the park. We never run in the library.", es: "Nosotros somos amigos. Nosotros a veces jugamos en el parque. Nosotros nunca corremos en la biblioteca." }
+      ],
+      preguntas: [
+        { q: "Does the student study at night?", qes: "¿Estudia el estudiante en la noche?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "When does the student always study?", qes: "¿Cuándo siempre estudia?", opts: [{ t: "in the morning", es: "en la mañana" }, { t: "at night", es: "en la noche" }, { t: "on Monday", es: "el lunes" }], ans: 0 },
+        { q: "Where does the student usually read books?", qes: "¿Dónde usualmente lee?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }, { t: "in the city", es: "en la ciudad" }], ans: 0 },
+        { q: "Does he always work on Mondays?", qes: "¿Siempre trabaja él los lunes?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "What does he sometimes do?", qes: "¿Qué hace él a veces?", opts: [{ t: "walks in the park", es: "camina en el parque" }, { t: "watches television", es: "mira TV" }, { t: "runs in the library", es: "corre en la biblioteca" }], ans: 0 },
+        { q: "Does he watch television at night?", qes: "¿Mira él TV en la noche?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Where is she always?", qes: "¿Dónde siempre está ella?", opts: [{ t: "in the office", es: "en la oficina" }, { t: "in the park", es: "en el parque" }, { t: "in the store", es: "en la tienda" }], ans: 0 },
+        { q: "What does she usually write?", qes: "¿Qué usualmente escribe?", opts: [{ t: "emails", es: "correos" }, { t: "books", es: "libros" }, { t: "exams", es: "exámenes" }], ans: 0 },
+        { q: "Do we sometimes play in the park?", qes: "¿A veces jugamos en el parque?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Do we run in the library?", qes: "¿Corremos en la biblioteca?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "I always study in the morning.", q: "When does the person study?", qes: "¿Cuándo estudia?", opts: [{ t: "in the morning", es: "en la mañana" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "He never watches television.", q: "Does he watch television?", qes: "¿Mira él TV?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "She usually reads at night.", q: "When does she usually read?", qes: "¿Cuándo usualmente lee?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }], ans: 0 },
+      { audio: "We sometimes play in the park.", q: "Where do we sometimes play?", qes: "¿Dónde a veces jugamos?", opts: [{ t: "in the park", es: "en el parque" }, { t: "in the library", es: "en la biblioteca" }], ans: 0 },
+      { audio: "They never eat in the library.", q: "Where do they never eat?", qes: "¿Dónde nunca comen?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "He always works on Mondays.", q: "When does he always work?", qes: "¿Cuándo siempre trabaja?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "She is always in the office.", q: "Where is she always?", qes: "¿Dónde siempre está?", opts: [{ t: "in the office", es: "en la oficina" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "I usually write emails.", q: "What does the person usually write?", qes: "¿Qué usualmente escribe?", opts: [{ t: "emails", es: "correos" }, { t: "books", es: "libros" }], ans: 0 },
+      { audio: "We never run in the library.", q: "Where do we never run?", qes: "¿Dónde nunca corremos?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the city", es: "en la ciudad" }], ans: 0 },
+      { audio: "He sometimes walks in the park.", q: "What does he sometimes do?", qes: "¿Qué hace a veces?", opts: [{ t: "walks in the park", es: "camina en el parque" }, { t: "runs in the city", es: "corre en la ciudad" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "I always study in the morning.", es: "Yo siempre estudio en la mañana." },
+      { tipo: "Repetición", en: "He never watches television.", es: "Él nunca mira televisión." },
+      { tipo: "Repetición", en: "We sometimes play in the park.", es: "Nosotros a veces jugamos en el parque." },
+      { tipo: "Lectura", en: "She usually reads at night.", es: "Ella usualmente lee en la noche." },
+      { tipo: "Lectura", en: "They never eat in the library.", es: "Ellos nunca comen en la biblioteca." },
+      { tipo: "Lectura", en: "She is always in the office.", es: "Ella siempre está en la oficina." },
+      { tipo: "Respuesta", prompt: "Do you study in the morning?", promptEs: "¿Estudias en la mañana?", en: "Yes, I always study in the morning.", es: "Sí, yo siempre estudio en la mañana." },
+      { tipo: "Respuesta", prompt: "Does he watch television at night?", promptEs: "¿Mira él TV en la noche?", en: "No, he never watches television.", es: "No, él nunca mira televisión." },
+      { tipo: "Producción", prompt: "Di una cosa que SIEMPRE haces.", en: "I always study in the morning.", es: "Yo siempre estudio en la mañana." },
+      { tipo: "Producción", prompt: "Di una cosa que NUNCA haces.", en: "I never eat in the library.", es: "Yo nunca como en la biblioteca." }
+    ],
+    writing: [
+      { es: "Yo siempre estudio en la mañana.", en: ["i always study in the morning"] },
+      { es: "Él siempre trabaja los lunes.", en: ["he always works on mondays"] },
+      { es: "Ella usualmente lee en la noche.", en: ["she usually reads at night"] },
+      { es: "Nosotros a veces jugamos en el parque.", en: ["we sometimes play in the park"] },
+      { es: "Ellos nunca comen en la biblioteca.", en: ["they never eat in the library"] },
+      { es: "Ella siempre está en la oficina.", en: ["she is always in the office"] },
+      { es: "Él nunca mira televisión en la noche.", en: ["he never watches television at night"] },
+      { es: "Yo usualmente escribo correos.", en: ["i usually write emails"] },
+      { es: "¿Estudias tú a veces en la biblioteca?", en: ["do you sometimes study in the library"] },
+      { es: "Nosotros nunca corremos en la ciudad.", en: ["we never run in the city"] }
+    ]
+  },
+  {
+    id: "N1-B17",
+    key: "b17",
+    titulo: "CAN / CAN'T: PODER / SABER",
+    opciones: ["can", "can't", "He can swim.", "She can speak English.", "Can you swim?", "They can play."],
+    palabras: [
+      { en: "can", es: "poder / saber (habilidad)" },
+      { en: "can't (cannot)", es: "no poder / no saber" }
+    ],
+    regla: "Can expresa poder o saber hacer algo. Regla 1: can NUNCA cambia: no existe 'cans' (He can swim, She can swim). Regla 2: después de can, el verbo va en forma base SIN la S (She can speak English, no 'she can speaks'). Regla 3: para negar se usa can't directo; para preguntar, can va primero (Can you speak English?). Regla de oro: el pronombre siempre se escribe: nunca digas solo 'can swim', di 'He can swim'.",
+    guion: "Bloque 17. Hoy aprendemos can y can't: las palabras para decir que puedes o sabes hacer algo. **\"Can\"**, poder o saber. **\"Can't\"**, no poder o no saber. Regla uno: can NUNCA cambia. No existe cans en la tercera persona. He can, she can, it can. **\"I can swim\"**, yo puedo nadar. **\"He can swim\"**, él puede nadar. **\"She can swim\"**, ella puede nadar. Regla dos: después de can, el verbo va en forma base, normal, sin la S de la tercera persona. **\"She can speak English\"**, ella puede hablar inglés, o sabe hablar inglés. **\"He can read books\"**, él puede leer libros. No se dice he can reads. Regla tres: para negar, can't directo. Para preguntar, can va primero. **\"He can't swim\"**, él no puede nadar. **\"Can you speak English?\"**, ¿puedes hablar inglés? **\"Yes, I can\"**, sí, puedo. **\"No, I can't\"**, no, no puedo. Ejemplos con tu vocabulario. **\"I can study in the library\"**, yo puedo estudiar en la biblioteca. **\"We can play on Monday\"**, nosotros podemos jugar el lunes. **\"They can't watch television at night\"**, ellos no pueden mirar televisión en la noche. **\"Can she write emails?\"**, ¿puede escribir correos ella? **\"Yes, she can\"**, sí, puede. Regla de oro: el pronombre siempre se escribe. Nunca digas solo can swim. Di He can swim. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "He ___ swim.", es: "puede", ans: "can" },
+      { en: "She ___ dance.", es: "no puede", ans: "can't" },
+      { en: "They ___ play on Monday.", es: "pueden", ans: "can" },
+      { en: "I ___ speak English.", es: "no puedo", ans: "can't" },
+      { en: "He cans swim.", es: "error: cans", ans: "He can swim." },
+      { en: "She can speaks English.", es: "error: speaks", ans: "She can speak English." },
+      { en: "Can you swims?", es: "error: swims", ans: "Can you swim?" },
+      { en: "They can playing.", es: "error: playing", ans: "They can play." }
+    ],
+    reading: {
+      pasaje: [
+        { en: "I am a student. I can speak English. I can read books in the library. I can't swim.", es: "Yo soy un estudiante. Yo puedo hablar inglés. Yo puedo leer libros en la biblioteca. Yo no puedo nadar." },
+        { en: "He is a citizen. He can walk in the park. He can't dance.", es: "Él es un ciudadano. Él puede caminar en el parque. Él no puede bailar." },
+        { en: "She is a teacher. She can teach the class. She can write emails. She can't play on Monday.", es: "Ella es una maestra. Ella puede enseñar la clase. Ella puede escribir correos. Ella no puede jugar el lunes." },
+        { en: "We are friends. We can study in the library. We can play in the park. We can't eat in the class.", es: "Nosotros somos amigos. Nosotros podemos estudiar en la biblioteca. Nosotros podemos jugar en el parque. Nosotros no podemos comer en la clase." }
+      ],
+      preguntas: [
+        { q: "What can the student speak?", qes: "¿Qué puede hablar el estudiante?", opts: [{ t: "English", es: "inglés" }, { t: "Spanish", es: "español" }, { t: "French", es: "francés" }], ans: 0 },
+        { q: "Where can the student read books?", qes: "¿Dónde puede leer libros?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }, { t: "in the store", es: "en la tienda" }], ans: 0 },
+        { q: "Can the student swim?", qes: "¿Puede nadar el estudiante?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "What can he do?", qes: "¿Qué puede hacer él?", opts: [{ t: "walk in the park", es: "caminar en el parque" }, { t: "dance", es: "bailar" }, { t: "swim", es: "nadar" }], ans: 0 },
+        { q: "Can he dance?", qes: "¿Puede bailar él?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "What can she teach?", qes: "¿Qué puede enseñar ella?", opts: [{ t: "the class", es: "la clase" }, { t: "the park", es: "el parque" }, { t: "the bus", es: "el autobús" }], ans: 0 },
+        { q: "What can she write?", qes: "¿Qué puede escribir ella?", opts: [{ t: "emails", es: "correos" }, { t: "exams", es: "exámenes" }, { t: "books", es: "libros" }], ans: 0 },
+        { q: "Can she play on Monday?", qes: "¿Puede jugar ella el lunes?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Where can we study?", qes: "¿Dónde podemos estudiar?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the class", es: "en la clase" }, { t: "on the bus", es: "en el autobús" }], ans: 0 },
+        { q: "Can we eat in the class?", qes: "¿Podemos comer en la clase?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "I can speak English.", q: "What can the person speak?", qes: "¿Qué puede hablar?", opts: [{ t: "English", es: "inglés" }, { t: "Spanish", es: "español" }], ans: 0 },
+      { audio: "He can swim.", q: "What can he do?", qes: "¿Qué puede hacer él?", opts: [{ t: "swim", es: "nadar" }, { t: "run", es: "correr" }], ans: 0 },
+      { audio: "She can't dance.", q: "Can she dance?", qes: "¿Puede bailar ella?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "We can play on Monday.", q: "When can we play?", qes: "¿Cuándo podemos jugar?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "at night", es: "en la noche" }], ans: 0 },
+      { audio: "They can study in the library.", q: "Where can they study?", qes: "¿Dónde pueden estudiar?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "Can you write emails? Yes, I can.", q: "Can the person write emails?", qes: "¿Puede escribir correos?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+      { audio: "He can't watch television at night.", q: "When can't he watch television?", qes: "¿Cuándo no puede mirar TV?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }], ans: 0 },
+      { audio: "She can teach the class.", q: "What can she teach?", qes: "¿Qué puede enseñar?", opts: [{ t: "the class", es: "la clase" }, { t: "the park", es: "el parque" }], ans: 0 },
+      { audio: "Can they swim? No, they can't.", q: "Can they swim?", qes: "¿Pueden nadar?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "I can read books.", q: "What can the person read?", qes: "¿Qué puede leer?", opts: [{ t: "books", es: "libros" }, { t: "emails", es: "correos" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "I can speak English.", es: "Yo puedo hablar inglés." },
+      { tipo: "Repetición", en: "He can swim.", es: "Él puede nadar." },
+      { tipo: "Repetición", en: "She can't dance.", es: "Ella no puede bailar." },
+      { tipo: "Lectura", en: "We can play on Monday.", es: "Nosotros podemos jugar el lunes." },
+      { tipo: "Lectura", en: "Can you write emails? Yes, I can.", es: "¿Puedes escribir correos? Sí, puedo." },
+      { tipo: "Lectura", en: "They can't eat in the class.", es: "Ellos no pueden comer en la clase." },
+      { tipo: "Respuesta", prompt: "Can you swim?", promptEs: "¿Puedes nadar?", en: "Yes, I can.", es: "Sí, puedo." },
+      { tipo: "Respuesta", prompt: "Can he speak English?", promptEs: "¿Puede él hablar inglés?", en: "Yes, he can.", es: "Sí, él puede." },
+      { tipo: "Producción", prompt: "Di una cosa que PUEDES hacer.", en: "I can read books.", es: "Yo puedo leer libros." },
+      { tipo: "Producción", prompt: "Di una cosa que NO PUEDES hacer.", en: "I can't swim.", es: "Yo no puedo nadar." }
+    ],
+    writing: [
+      { es: "Yo puedo hablar inglés.", en: ["i can speak english"] },
+      { es: "Él puede nadar.", en: ["he can swim"] },
+      { es: "Ella no puede bailar.", en: ["she can't dance", "she cannot dance"] },
+      { es: "Nosotros podemos jugar el lunes.", en: ["we can play on monday"] },
+      { es: "Ellos pueden estudiar en la biblioteca.", en: ["they can study in the library"] },
+      { es: "¿Puedes escribir correos?", en: ["can you write emails"] },
+      { es: "Sí, puedo.", en: ["yes i can"] },
+      { es: "No, no puedo.", en: ["no i can't", "no i cannot"] },
+      { es: "Ella puede enseñar la clase.", en: ["she can teach the class"] },
+      { es: "Nosotros no podemos comer en la clase.", en: ["we can't eat in the class", "we cannot eat in the class"] }
+    ]
+  },
+  {
+    id: "N1-B18",
+    key: "b18",
+    titulo: "IMPERATIVOS: ÓRDENES Y PROHIBICIONES",
+    opciones: ["Don't", "Open", "Write", "Walk", "Don't eat in the class.", "Don't run in the library.", "Don't watch television at night.", "Don't sleep in the class."],
+    palabras: [
+      { en: "please", es: "por favor" },
+      { en: "Don't...", es: "No... (prohibiciones, del bloque DO NOT)" }
+    ],
+    regla: "Los imperativos son órdenes y prohibiciones. Regla 1: la orden afirmativa usa el verbo en forma base SIN pronombre. ATENCIÓN: es el ÚNICO caso en inglés donde el sujeto no se escribe, la única excepción a la regla de oro del pronombre. Regla 2: para prohibir, Don't va primero (Don't eat in the class). Regla 3: con please la orden se vuelve amable (Please, open the book). Recuerda: en TODAS las demás frases el pronombre siempre se escribe, solo los comandos son la excepción.",
+    guion: "Bloque 18. Hoy aprendemos los imperativos: órdenes y prohibiciones. En español: abre, cierra, lee, no comas. Regla uno: la orden afirmativa usa el verbo en forma base, sin pronombre. Atención: este es el ÚNICO caso en inglés donde el sujeto no se escribe. Es la única excepción a la regla de oro del pronombre. **\"Open the book\"**, abre el libro. **\"Close the book\"**, cierra el libro. **\"Read the book\"**, lee el libro. **\"Write the email\"**, escribe el correo. **\"Study in the library\"**, estudia en la biblioteca. Regla dos: para prohibir, don't va primero. Don't viene de do not, que ya conoces del bloque de las preguntas. **\"Don't eat in the class\"**, no comas en la clase. **\"Don't run in the library\"**, no corras en la biblioteca. **\"Don't watch television at night\"**, no mires televisión en la noche. Nota importante: en comandos, el sujeto you no se escribe. Pero recuerda: en TODAS las demás frases del inglés, el pronombre siempre se escribe. Solo los comandos son la excepción. Y con please, la orden se vuelve amable. **\"Please, open the book\"**, por favor, abre el libro. **\"Please, listen\"**, por favor, escucha. Ahora completa la tabla. Primero piensa, luego revisa.",
+    tabla: [
+      { en: "______ eat in the class.", es: "prohibición", ans: "Don't" },
+      { en: "______ the book.", es: "abre", ans: "Open" },
+      { en: "______ run in the library.", es: "prohibición", ans: "Don't" },
+      { en: "______ the email.", es: "escribe", ans: "Write" },
+      { en: "______ sleep in the class.", es: "prohibición", ans: "Don't" },
+      { en: "______ in the park.", es: "camina", ans: "Walk" },
+      { en: "Eat in the class.", es: "convierte en prohibición", ans: "Don't eat in the class." },
+      { en: "Run in the library.", es: "convierte en prohibición", ans: "Don't run in the library." },
+      { en: "Watch television at night.", es: "convierte en prohibición", ans: "Don't watch television at night." },
+      { en: "Sleep in the class.", es: "convierte en prohibición", ans: "Don't sleep in the class." }
+    ],
+    reading: {
+      pasaje: [
+        { en: "In the class, the teacher writes: 'Open the book. Read the book. Write the email. Don't sleep in the class. Don't eat in the class.'", es: "En la clase, la maestra escribe: 'Abre el libro. Lee el libro. Escribe el correo. No duermas en la clase. No comas en la clase.'" },
+        { en: "In the park, the citizen reads: 'Walk in the park. Don't run in the library. Study in the library. Don't watch television at night.'", es: "En el parque, el ciudadano lee: 'Camina en el parque. No corras en la biblioteca. Estudia en la biblioteca. No mires televisión en la noche.'" },
+        { en: "The student writes: 'Please, listen. Open the book. Don't close the book.'", es: "El estudiante escribe: 'Por favor, escucha. Abre el libro. No cierres el libro.'" }
+      ],
+      preguntas: [
+        { q: "Who writes in the class?", qes: "¿Quién escribe en la clase?", opts: [{ t: "the teacher", es: "la maestra" }, { t: "the citizen", es: "el ciudadano" }, { t: "the student", es: "el estudiante" }], ans: 0 },
+        { q: "What does the teacher write?", qes: "¿Qué escribe la maestra?", opts: [{ t: "Open the book", es: "abre el libro" }, { t: "Close the book", es: "cierra el libro" }, { t: "Open the email", es: "abre el correo" }], ans: 0 },
+        { q: "Does the teacher write \"Don't sleep in the class\"?", qes: "¿Escribe 'no duermas en la clase'?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Does the teacher write \"Eat in the class\"?", qes: "¿Escribe 'come en la clase'?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "Who reads in the park?", qes: "¿Quién lee en el parque?", opts: [{ t: "the citizen", es: "el ciudadano" }, { t: "the teacher", es: "la maestra" }, { t: "the friends", es: "los amigos" }], ans: 0 },
+        { q: "What does the citizen read?", qes: "¿Qué lee el ciudadano?", opts: [{ t: "Walk in the park", es: "camina en el parque" }, { t: "Run in the park", es: "corre en el parque" }, { t: "Sleep in the park", es: "duerme en el parque" }], ans: 0 },
+        { q: "Where is \"Don't run\"?", qes: "¿Dónde es el 'no corras'?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }, { t: "in the city", es: "en la ciudad" }], ans: 0 },
+        { q: "Who writes \"Please, listen\"?", qes: "¿Quién escribe 'por favor, escucha'?", opts: [{ t: "the student", es: "el estudiante" }, { t: "the teacher", es: "la maestra" }, { t: "the citizen", es: "el ciudadano" }], ans: 0 },
+        { q: "Does the student write \"Don't close the book\"?", qes: "¿Escribe 'no cierres el libro'?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+        { q: "Does the student write \"Close the book\"?", qes: "¿Escribe 'cierra el libro'?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "Open the book.", q: "What do you hear?", qes: "¿Qué escuchas?", opts: [{ t: "Open the book", es: "abre el libro" }, { t: "Close the book", es: "cierra el libro" }], ans: 0 },
+      { audio: "Don't eat in the class.", q: "Where is \"don't eat\"?", qes: "¿Dónde es el 'no comas'?", opts: [{ t: "in the class", es: "en la clase" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+      { audio: "Write the email.", q: "What do you hear?", qes: "¿Qué escuchas?", opts: [{ t: "Write the email", es: "escribe el correo" }, { t: "Read the email", es: "lee el correo" }], ans: 0 },
+      { audio: "Don't run in the library.", q: "Where is \"don't run\"?", qes: "¿Dónde es el 'no corras'?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the city", es: "en la ciudad" }], ans: 0 },
+      { audio: "Study in the library.", q: "Where is \"study\"?", qes: "¿Dónde es el 'estudia'?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the class", es: "en la clase" }], ans: 0 },
+      { audio: "Don't watch television at night.", q: "When is \"don't watch\"?", qes: "¿Cuándo es el 'no mires'?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }], ans: 0 },
+      { audio: "Please, open the book.", q: "What do you hear?", qes: "¿Qué escuchas?", opts: [{ t: "open the book", es: "abre el libro" }, { t: "open the email", es: "abre el correo" }], ans: 0 },
+      { audio: "Close the book.", q: "What do you hear?", qes: "¿Qué escuchas?", opts: [{ t: "Close the book", es: "cierra el libro" }, { t: "Close the email", es: "cierra el correo" }], ans: 0 },
+      { audio: "Don't sleep in the class.", q: "Where is \"don't sleep\"?", qes: "¿Dónde es el 'no duermas'?", opts: [{ t: "in the class", es: "en la clase" }, { t: "in the house", es: "en la casa" }], ans: 0 },
+      { audio: "Walk in the park.", q: "Where is \"walk\"?", qes: "¿Dónde es el 'camina'?", opts: [{ t: "in the park", es: "en el parque" }, { t: "in the library", es: "en la biblioteca" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Repetición", en: "Open the book.", es: "Abre el libro." },
+      { tipo: "Repetición", en: "Close the book.", es: "Cierra el libro." },
+      { tipo: "Repetición", en: "Don't eat in the class.", es: "No comas en la clase." },
+      { tipo: "Lectura", en: "Write the email.", es: "Escribe el correo." },
+      { tipo: "Lectura", en: "Don't run in the library.", es: "No corras en la biblioteca." },
+      { tipo: "Lectura", en: "Please, study in the library.", es: "Por favor, estudia en la biblioteca." },
+      { tipo: "Respuesta", prompt: "Di en inglés: 'abre el libro'", promptEs: "Abre el libro.", en: "Open the book.", es: "Abre el libro." },
+      { tipo: "Respuesta", prompt: "Di en inglés: 'no corras en la biblioteca'", promptEs: "No corras en la biblioteca.", en: "Don't run in the library.", es: "No corras en la biblioteca." },
+      { tipo: "Producción", prompt: "Da una orden con 'the book'.", promptEs: "el libro", en: "Read the book.", es: "Lee el libro." },
+      { tipo: "Producción", prompt: "Da una prohibición con 'the class'.", promptEs: "la clase", en: "Don't sleep in the class.", es: "No duermas en la clase." }
+    ],
+    writing: [
+      { es: "Abre el libro.", en: ["open the book"] },
+      { es: "Cierra el libro.", en: ["close the book"] },
+      { es: "Lee el libro.", en: ["read the book"] },
+      { es: "Escribe el correo.", en: ["write the email"] },
+      { es: "Estudia en la biblioteca.", en: ["study in the library"] },
+      { es: "No comas en la clase.", en: ["don't eat in the class", "do not eat in the class"] },
+      { es: "No corras en la biblioteca.", en: ["don't run in the library", "do not run in the library"] },
+      { es: "No mires televisión en la noche.", en: ["don't watch television at night", "do not watch television at night"] },
+      { es: "Por favor, escucha.", en: ["please listen", "please, listen"] },
+      { es: "No duermas en la clase.", en: ["don't sleep in the class", "do not sleep in the class"] }
+    ]
+  },
+  {
+    id: "N1-B19",
+    key: "b19",
+    tipo: "final",
+    titulo: "Integración Final A1: FRASES + PÁRRAFOS + TEST TOEFL",
+    guion: "Bloque 19. La integración final del nivel A1. Ahora combinas todo lo que aprendiste: pronombres, posesivos, there is, there are, presente simple, adverbios de frecuencia, can y los imperativos. Primero, diez frases de aplicación. Luego, párrafos integrados. Y al final, el test de cierre. Todo inglés con su traducción. Tú puedes.",
+    frases: [
+      { es: "Yo siempre estudio en la biblioteca en la mañana.", en: ["i always study in the library in the morning"] },
+      { es: "Ella puede escribir correos en la oficina.", en: ["she can write emails in the office"] },
+      { es: "Hay un libro sobre la mesa y hay bolígrafos sobre la computadora.", en: ["there is a book on the table and there are pens on the computer"] },
+      { es: "Él nunca mira televisión en la noche.", en: ["he never watches television at night"] },
+      { es: "Abre el libro y escribe el correo, por favor.", en: ["open the book and write the email please"] },
+      { es: "Mi libro está en la biblioteca y su tarea de ellos está en la clase.", en: ["my book is in the library and their homework is in the class"] },
+      { es: "Nosotros a veces caminamos en el parque en verano.", en: ["we sometimes walk in the park in summer"] },
+      { es: "¿Puedes nadar? No, no puedo.", en: ["can you swim no i can't", "can you swim no i cannot"] },
+      { es: "La maestra me enseña a mí y yo la miro a ella.", en: ["the teacher teaches me and i watch her"] },
+      { es: "Este es mi bolígrafo y esos son sus exámenes de ellos.", en: ["this is my pen and those are their exams"] }
+    ],
+    parrafosEN: [
+      { en: "Hello. I am a student. I always study in the library in the morning. I can speak English and I can write emails. My book is on the table and my pen is on the computer. The teacher teaches me and I watch her. There is an exam on Monday. Open the book and read the book, please. I never sleep in the class.", es: "Hola. Yo soy un estudiante. Yo siempre estudio en la biblioteca en la mañana. Yo puedo hablar inglés y yo puedo escribir correos. Mi libro está sobre la mesa y mi bolígrafo está sobre la computadora. La maestra me enseña a mí y yo la miro a ella. Hay un examen el lunes. Abre el libro y lee el libro, por favor. Yo nunca duermo en la clase." },
+      { en: "He is a citizen. He usually works on Mondays and he sometimes walks in the park. He can't dance. He never watches television at night. His car is small and his house is in the city. There are cars in the city and there are friends in the park. We watch them and they watch us. Don't run in the library. Walk in the park, please.", es: "Él es un ciudadano. Él usualmente trabaja los lunes y él a veces camina en el parque. Él no puede bailar. Él nunca mira televisión en la noche. Su carro es pequeño y su casa está en la ciudad. Hay carros en la ciudad y hay amigos en el parque. Nosotros los miramos a ellos y ellos nos miran a nosotros. No corras en la biblioteca. Camina en el parque, por favor." }
+    ],
+    parrafosES: [
+      { es: "Yo soy un estudiante. Yo siempre estudio en la biblioteca en la mañana. Yo puedo leer libros y escribir correos. Mi bolígrafo está sobre la computadora. La maestra me enseña a mí. Hay un examen el lunes. Abre el libro, por favor.", en: "I am a student. I always study in the library in the morning. I can read books and write emails. My pen is on the computer. The teacher teaches me. There is an exam on Monday. Open the book, please." },
+      { es: "Ella es una maestra. Ella usualmente escribe correos en la oficina. Ella nunca come en la clase. Su biblioteca de ella es grande. Estos son nuestros libros y esos son sus exámenes de ellos. Nosotros podemos estudiar en la biblioteca. No duermas en la clase.", en: "She is a teacher. She usually writes emails in the office. She never eats in the class. Her library is big. These are our books and those are their exams. We can study in the library. Don't sleep in the class." }
+    ],
+    test: {
+      reading: {
+        pasaje: {
+          en: "Ana is a student. She always studies in the library in the morning. She can speak English and she can write emails. Her book is on the table and her pen is on the computer. The teacher teaches her and she watches him. There is an exam on Monday. Luis is a citizen. He usually works on Mondays. He sometimes walks in the park. He can't swim. There are cars in the city and there are friends at the party. Don't eat in the class. Open the book and read the book, please.",
+          es: "Ana es una estudiante. Ella siempre estudia en la biblioteca en la mañana. Ella puede hablar inglés y ella puede escribir correos. Su libro está sobre la mesa y su bolígrafo está sobre la computadora. La maestra le enseña a ella y ella lo mira a él. Hay un examen el lunes. Luis es un ciudadano. Él usualmente trabaja los lunes. Él a veces camina en el parque. Él no puede nadar. Hay carros en la ciudad y hay amigos en la fiesta. No comas en la clase. Abre el libro y lee el libro, por favor."
+        },
+        preguntas: [
+          { q: "Where does Ana always study?", qes: "¿Dónde siempre estudia Ana?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the park", es: "en el parque" }, { t: "at the party", es: "en la fiesta" }], ans: 0 },
+          { q: "What can Ana write?", qes: "¿Qué puede escribir Ana?", opts: [{ t: "emails", es: "correos" }, { t: "exams", es: "exámenes" }, { t: "books", es: "libros" }], ans: 0 },
+          { q: "When is the exam?", qes: "¿Cuándo es el examen?", opts: [{ t: "on Monday", es: "el lunes" }, { t: "in summer", es: "en verano" }, { t: "at night", es: "en la noche" }], ans: 0 },
+          { q: "Can Luis swim?", qes: "¿Puede nadar Luis?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+          { q: "When does Luis usually work?", qes: "¿Cuándo usualmente trabaja Luis?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "in the morning", es: "en la mañana" }, { t: "at night", es: "en la noche" }], ans: 0 }
+        ]
+      },
+      listening: [
+        { audio: "I always study in the morning. I never study at night.", q: "When does the person never study?", qes: "¿Cuándo nunca estudia?", opts: [{ t: "at night", es: "en la noche" }, { t: "in the morning", es: "en la mañana" }], ans: 0 },
+        { audio: "There is a book on the table and there are pens on the computer.", q: "What is on the computer?", qes: "¿Qué hay sobre la computadora?", opts: [{ t: "pens", es: "bolígrafos" }, { t: "a book", es: "un libro" }], ans: 0 },
+        { audio: "She can write emails. She can't swim.", q: "What can't she do?", qes: "¿Qué no puede hacer?", opts: [{ t: "swim", es: "nadar" }, { t: "write emails", es: "escribir correos" }], ans: 0 },
+        { audio: "Open the book and write the email, please.", q: "What does the person say to open?", qes: "¿Qué dice abrir?", opts: [{ t: "the book", es: "el libro" }, { t: "the email", es: "el correo" }], ans: 0 },
+        { audio: "He usually works on Mondays. He sometimes walks in the park.", q: "Where does he sometimes walk?", qes: "¿Dónde a veces camina?", opts: [{ t: "in the park", es: "en el parque" }, { t: "on Mondays", es: "los lunes" }], ans: 0 }
+      ],
+      speaking: [
+        { tipo: "Lectura", prompt: "I always study in the library in the morning.", promptEs: "Siempre estudio en la biblioteca en la mañana.", en: "I always study in the library in the morning.", es: "Yo siempre estudio en la biblioteca en la mañana." },
+        { tipo: "Respuesta", prompt: "Can you speak English?", promptEs: "¿Puedes hablar inglés?", en: "Yes, I can.", es: "Sí, puedo." },
+        { tipo: "Producción", prompt: "Di 3 frases sobre ti: una con 'always', una con 'can', una con 'there is'.", promptEs: "Siempre... Puedo... Hay...", en: "I always study in the morning. I can speak English. There is a book on the table.", es: "Yo siempre estudio en la mañana. Yo puedo hablar inglés. Hay un libro sobre la mesa." }
+      ],
+      writing: [
+        { es: "Yo siempre estudio en la biblioteca y yo puedo escribir correos.", en: ["i always study in the library and i can write emails"] },
+        { es: "Hay un libro sobre la mesa. No corras en la biblioteca.", en: ["there is a book on the table don't run in the library", "there is a book on the table do not run in the library", "there is a book on the table dont run in the library"] },
+        { es: "Ella me enseña a mí y yo la miro a ella.", en: ["she teaches me and i watch her"] }
+      ]
+    }
+  }
+];
+
+/* ============================================
+   EXÁMENES DE NIVEL A1 (ARQUITECTURA DE 3 EVALUACIONES)
+   TEST-DIAG-A1  -> inicio del nivel (línea base)
+   TEST-MID-A1   -> después de B9 (mitad del nivel)
+   TEST-PROD-FINAL-A1 -> cierre (producción por párrafos)
+   Todos: Reading + Listening + Speaking + Writing.
+============================================ */
+
+var LEVEL_TESTS = [
+  {
+    id: "TEST-DIAG-A1",
+    key: "diag",
+    tipo: "diag",
+    titulo: "Examen Inicial (Diagnóstico)",
+    posicion: "inicio",
+    guion: "Examen inicial de diagnóstico del nivel A1. No es para aprobar ni reprobar: mide tu línea base. Tienes lectura, escucha, voz y escritura. Todo inglés con su traducción. Responde con calma.",
+    reading: {
+      pasaje: {
+        en: "Hello. I am Ana. I am a student. He is Luis. He is a teacher. They are in the library. The book is on the table.",
+        es: "Hola. Yo soy Ana. Yo soy una estudiante. Él es Luis. Él es un maestro. Ellos están en la biblioteca. El libro está sobre la mesa."
+      },
+      preguntas: [
+        { q: "Who is Ana?", qes: "¿Quién es Ana?", opts: [{ t: "a student", es: "una estudiante" }, { t: "a teacher", es: "una maestra" }, { t: "a citizen", es: "una ciudadana" }], ans: 0 },
+        { q: "Who is Luis?", qes: "¿Quién es Luis?", opts: [{ t: "a student", es: "un estudiante" }, { t: "a teacher", es: "un maestro" }, { t: "a friend", es: "un amigo" }], ans: 1 },
+        { q: "Where are they?", qes: "¿Dónde están?", opts: [{ t: "in the library", es: "en la biblioteca" }, { t: "in the city", es: "en la ciudad" }, { t: "on the bus", es: "en el autobús" }], ans: 0 },
+        { q: "Where is the book?", qes: "¿Dónde está el libro?", opts: [{ t: "on the table", es: "sobre la mesa" }, { t: "on the computer", es: "sobre la computadora" }, { t: "in the park", es: "en el parque" }], ans: 0 },
+        { q: "Is Ana a teacher?", qes: "¿Es Ana una maestra?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "I am a student.", q: "What is the person?", qes: "¿Qué es la persona?", opts: [{ t: "a student", es: "un estudiante" }, { t: "a teacher", es: "un maestro" }], ans: 0 },
+      { audio: "The pen is on the book.", q: "Where is the pen?", qes: "¿Dónde está el bolígrafo?", opts: [{ t: "on the book", es: "sobre el libro" }, { t: "on the table", es: "sobre la mesa" }], ans: 0 },
+      { audio: "She is in the city.", q: "Where is she?", qes: "¿Dónde está ella?", opts: [{ t: "in the city", es: "en la ciudad" }, { t: "in the park", es: "en el parque" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Lectura", en: "I am a student.", es: "Yo soy un estudiante." },
+      { tipo: "Respuesta", prompt: "Are you a teacher?", promptEs: "¿Eres un maestro?", en: "No, I am not.", es: "No, no soy." }
+    ],
+    writing: [
+      { es: "Yo soy un estudiante.", en: ["i am a student"] },
+      { es: "Ella está en la biblioteca.", en: ["she is in the library"] }
+    ]
+  },
+  {
+    id: "TEST-MID-A1",
+    key: "mid",
+    tipo: "mid",
+    titulo: "Examen Intermedio",
+    posicion: "medio",
+    guion: "Examen intermedio del nivel A1. Valida lo aprendido en los primeros nueve bloques: el verbo to be, el presente simple, el presente continuo y las preguntas con do y does. Tienes lectura, escucha, voz y escritura. Todo inglés con su traducción.",
+    reading: {
+      pasaje: {
+        en: "Carlos is a student. He studies in the library every day. He is not working now. He is reading a book. Maria is a teacher. She does not watch television at night. She is writing an email. They are friends. They do not eat in the class.",
+        es: "Carlos es un estudiante. Él estudia en la biblioteca todos los días. Él no está trabajando ahora. Él está leyendo un libro. Maria es una maestra. Ella no mira televisión en la noche. Ella está escribiendo un correo. Ellos son amigos. Ellos no comen en la clase."
+      },
+      preguntas: [
+        { q: "What does Carlos do every day?", qes: "¿Qué hace Carlos todos los días?", opts: [{ t: "studies in the library", es: "estudia en la biblioteca" }, { t: "works in the office", es: "trabaja en la oficina" }, { t: "watches television", es: "mira TV" }], ans: 0 },
+        { q: "Is Carlos working now?", qes: "¿Está trabajando Carlos ahora?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+        { q: "What does Maria NOT do at night?", qes: "¿Qué NO hace Maria en la noche?", opts: [{ t: "watch television", es: "mirar TV" }, { t: "read books", es: "leer libros" }, { t: "write emails", es: "escribir correos" }], ans: 0 },
+        { q: "What is Maria doing?", qes: "¿Qué está haciendo Maria?", opts: [{ t: "writing an email", es: "escribiendo un correo" }, { t: "reading a book", es: "leyendo un libro" }, { t: "eating", es: "comiendo" }], ans: 0 },
+        { q: "Do they eat in the class?", qes: "¿Comen ellos en la clase?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 }
+      ]
+    },
+    listening: [
+      { audio: "I do not work. I am studying.", q: "What is the person doing?", qes: "¿Qué está haciendo?", opts: [{ t: "studying", es: "estudiando" }, { t: "working", es: "trabajando" }], ans: 0 },
+      { audio: "Does he study English? Yes, he does.", q: "Does he study English?", qes: "¿Estudia él inglés?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 0 },
+      { audio: "She is not watching television. She is reading.", q: "What is she doing?", qes: "¿Qué está haciendo ella?", opts: [{ t: "reading", es: "leyendo" }, { t: "watching television", es: "mirando TV" }], ans: 0 },
+      { audio: "Do they live in the city? No, they don't.", q: "Do they live in the city?", qes: "¿Viven en la ciudad?", opts: [{ t: "Yes", es: "Sí" }, { t: "No", es: "No" }], ans: 1 },
+      { audio: "He works on Mondays.", q: "When does he work?", qes: "¿Cuándo trabaja?", opts: [{ t: "on Mondays", es: "los lunes" }, { t: "at night", es: "en la noche" }], ans: 0 }
+    ],
+    speaking: [
+      { tipo: "Lectura", en: "I am not working. I am studying in the library.", es: "No estoy trabajando. Estoy estudiando en la biblioteca." },
+      { tipo: "Respuesta", prompt: "Does she study English?", promptEs: "¿Estudia ella inglés?", en: "Yes, she does.", es: "Sí, ella estudia." },
+      { tipo: "Producción", prompt: "Di una frase de rutina y una de 'ahora' (now).", promptEs: "rutina y now", en: "I work on Mondays. I am working now.", es: "Yo trabajo los lunes. Yo estoy trabajando ahora." }
+    ],
+    writing: [
+      { es: "Él no trabaja los lunes.", en: ["he does not work on mondays", "he doesn't work on mondays"] },
+      { es: "¿Estás estudiando tú?", en: ["are you studying"] },
+      { es: "Nosotros no estamos comiendo en la clase.", en: ["we are not eating in the class", "we aren't eating in the class"] }
+    ]
+  },
+  {
+    id: "TEST-PROD-FINAL-A1",
+    key: "prod",
+    tipo: "prod",
+    titulo: "Examen de Producción Final",
+    posicion: "final",
+    guion: "Examen final de producción del nivel A1. Primero lees y escuchas un párrafo en inglés y lo escribes en español. Después escribes párrafos en inglés y los lees en voz alta. Todo inglés con su traducción.",
+    parrafos: [
+      { dir: "en", en: "Good morning. We are in the class. The teacher is in the office. There are books on the table and there are pens on the computer. I can read the books and I can write the emails. My friend is in the library. He usually studies in the morning. We can sing and we can dance at the party. Don't sleep in the class. Listen, please.", es: "Buenos días. Nosotros estamos en la clase. El maestro está en la oficina. Hay libros sobre la mesa y hay bolígrafos sobre la computadora. Yo puedo leer los libros y yo puedo escribir los correos. Mi amigo está en la biblioteca. Él usualmente estudia en la mañana. Nosotros podemos cantar y podemos bailar en la fiesta. No duermas en la clase. Escucha, por favor." },
+      { dir: "en", en: "She is a citizen. She lives in the city. Her apartment is small. There is a television in the apartment. She sometimes watches television at night. She can walk in the park in summer. There are friends in the park. They watch her and she watches them. Walk in the park, please.", es: "Ella es una ciudadana. Ella vive en la ciudad. Su departamento de ella es pequeño. Hay una televisión en el departamento. Ella a veces mira televisión en la noche. Ella puede caminar en el parque en verano. Hay amigos en el parque. Ellos la miran a ella y ella los mira a ellos. Camina en el parque, por favor." },
+      { dir: "es", es: "Él es un ciudadano. Él siempre camina en la ciudad en la mañana. Él puede comprar comida en la tienda. Hay un autobús en la ciudad. No corras en la biblioteca.", en: "He is a citizen. He always walks in the city in the morning. He can buy food in the store. There is a bus in the city. Don't run in the library." },
+      { dir: "es", es: "Nosotros somos estudiantes. Nosotros podemos estudiar en la biblioteca los lunes. Nuestra clase es en la mañana. La maestra nos enseña a nosotros y nosotros la miramos a ella.", en: "We are students. We can study in the library on Mondays. Our class is in the morning. The teacher teaches us and we watch her." },
+      { dir: "es", es: "Ella es una maestra. Ella siempre escribe correos en la oficina. Ella puede cantar y bailar en la fiesta. Hay comida y agua en la fiesta. Ellos no beben café en la noche.", en: "She is a teacher. She always writes emails in the office. She can sing and dance at the party. There is food and water at the party. They do not drink coffee at night." }
+    ]
+  }
+];
+
+function mbBadgeNum(block) {
+  return String(block.id).replace("N1-", "");
+}
+
+function mbScore(id) {
+  window.__mbscores = window.__mbscores || {};
+  return window.__mbscores[id] || 0;
+}
+
+function mbAddScore(id, n) {
+  window.__mbscores = window.__mbscores || {};
+  window.__mbscores[id] = (window.__mbscores[id] || 0) + n;
+}
+
+function mbSpeak(text) {
+  if (typeof ssSpeak === "function") {
+    ssSpeak(text, "narrator");
+  }
+}
+
+function mbPlayEn(text) {
+  if (typeof ssSpeak === "function") {
+    ssSpeak('**"' + text + '"**', "narrator");
+  }
+}
+
+function renderMasterFlow(container, block) {
+  if (typeof appState !== "undefined") {
+    appState.lastInteraction = "Bloque " + mbBadgeNum(block) + ": " + block.titulo;
+  }
+  if (block.tipo === "final") {
+    renderFinalFlow(container, block);
+  } else {
+    renderMasterGrammar(container, block);
+  }
+}
+
+/* ---------- GRAMATICA (TTS + TABLA) ---------- */
+function renderMasterGrammar(container, block) {
+  var b = block;
+  var key = b.key;
+
+  var pills = b.palabras.map(function (p) {
+    return '<span class="mb-pill"><strong>' + escapeHtml(p.en) + '</strong> <span>= ' + escapeHtml(p.es) + '</span></span>';
+  }).join("");
+
+  var optsHtml = b.opciones.map(function (o) {
+    return '<option value="' + o + '">' + o + '</option>';
+  }).join("");
+
+  var rows = b.tabla.map(function (item, i) {
+    return '<div class="s6-row">' +
+      '<div class="s6-es">' + escapeHtml(item.en) + ' <i>(' + escapeHtml(item.es) + ')</i></div>' +
+      '<select id="mbg' + key + 'e' + i + '" class="n0-select"><option value="">?</option>' + optsHtml + '</select>' +
+      '<div id="mbgf' + key + i + '" class="s4-answer"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · GRAMÁTICA</div>' +
+      '<h2 class="ob-title">' + escapeHtml(b.titulo) + '</h2>' +
+      '<p class="ob-sub">Palabras funcionales nuevas (se enseñan ANTES de usarse):</p>' +
+      '<div class="mb-pills">' + pills + '</div>' +
+      '<div class="s4-rule"><b>Regla de oro:</b> ' + escapeHtml(b.regla) + '</div>' +
+      '<p class="ob-sub">Completa la tabla. Primero piensa, luego revisa.</p>' +
+      rows +
+      '<div id="mbgScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mbgCheck" class="btn">Revisar</button>' +
+        '<button id="mbgNext" class="btn" disabled>Continuar a Reading</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mbgCheck").onclick = function () {
+    var score = 0;
+    b.tabla.forEach(function (item, i) {
+      var sel = document.getElementById("mbg" + key + "e" + i);
+      var fb = document.getElementById("mbgf" + key + i);
+      var ok = sel.value === item.ans;
+      if (ok) score++;
+      sel.classList.remove("ok", "bad");
+      sel.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.ans + ".";
+    });
+    mbAddScore(b.id, score);
+    document.getElementById("mbgScore").textContent = "Resultado: " + score + "/" + b.tabla.length;
+    document.getElementById("mbgNext").disabled = false;
+  };
+
+  document.getElementById("mbgNext").onclick = function () {
+    renderMasterReading(container, b);
+  };
+
+  mbSpeak(b.guion);
+}
+
+/* ---------- READING (10) ---------- */
+function renderMasterReading(container, block) {
+  var b = block;
+
+  var passage = b.reading.pasaje.map(function (l) {
+    return '<div class="mb-passage-line">' + ssDisplayEn(l.en) + '<span class="mb-es">' + escapeHtml(l.es) + '</span></div>';
+  }).join("");
+
+  var questions = b.reading.preguntas.map(function (q, i) {
+    var opts = q.opts.map(function (o, j) {
+      return '<button type="button" class="mb-option" data-j="' + j + '">' +
+        '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+        '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+      '</button>';
+    }).join("");
+    return '<div class="mb-question-card">' +
+      '<div class="mb-question">' + (i + 1) + '. ' + escapeHtml(q.q) + '</div>' +
+      '<div class="mb-question-es">' + escapeHtml(q.qes) + '</div>' +
+      '<div class="mb-option-grid" data-q="' + i + '">' + opts + '</div>' +
+      '<div class="mb-feedback"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · READING</div>' +
+      '<h2 class="ob-title">Lee y comprende</h2>' +
+      '<p class="ob-sub">Lee el texto y responde cada pregunta. Todo inglés con su traducción.</p>' +
+      '<div class="mb-passage">' + passage + '</div>' +
+      questions +
+      '<div id="mbrScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mbrNext" class="btn" disabled>Continuar a Listening</button>' +
+      '</div>' +
+    '</div>';
+
+  var answered = 0;
+  var total = b.reading.preguntas.length;
+
+  container.querySelectorAll(".mb-question-card").forEach(function (card) {
+    var qIndex = Number(card.querySelector(".mb-option-grid").dataset.q);
+    var q = b.reading.preguntas[qIndex];
+    var opts = card.querySelectorAll(".mb-option");
+
+    opts.forEach(function (btn) {
+      btn.onclick = function () {
+        if (btn.disabled) return;
+        opts.forEach(function (x) { x.disabled = true; });
+        var ok = Number(btn.dataset.j) === q.ans;
+        if (ok) {
+          mbAddScore(b.id, 1);
+        } else {
+          opts[q.ans].classList.add("correct");
+        }
+        btn.classList.add(ok ? "correct" : "wrong");
+        card.querySelector(".mb-feedback").textContent =
+          ok ? "Correcto." : "Correcto: " + q.opts[q.ans].t + " (" + q.opts[q.ans].es + ").";
+        answered++;
+        document.getElementById("mbrScore").textContent = "Progreso: " + answered + "/" + total;
+        if (answered === total) {
+          document.getElementById("mbrNext").disabled = false;
+        }
+      };
+    });
+  });
+
+  document.getElementById("mbrNext").onclick = function () {
+    renderMasterListening(container, b, 0);
+  };
+
+  mbSpeak("Lectura del bloque " + mbBadgeNum(b) + ". Lee el texto y responde las diez preguntas. Recuerda: todo inglés con su traducción.");
+}
+
+/* ---------- LISTENING (10) ---------- */
+function renderMasterListening(container, block, idx) {
+  var b = block;
+  var items = b.listening;
+
+  if (idx >= items.length) {
+    renderMasterSpeaking(container, b, 0);
+    return;
+  }
+
+  var item = items[idx];
+
+  var opts = item.opts.map(function (o, j) {
+    return '<button type="button" class="mb-option" data-j="' + j + '">' +
+      '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+      '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+    '</button>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · LISTENING</div>' +
+      '<h2 class="ob-title">Escucha y elige</h2>' +
+      '<div class="mb-progress">Escucha ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-listen-card">' +
+        '<div class="mb-question">' + escapeHtml(item.q) + '</div>' +
+        '<div class="mb-question-es">' + escapeHtml(item.qes) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="mblPlay" class="btn">🔊 Escuchar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-option-grid">' + opts + '</div>' +
+      '<div id="mblFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mblNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  function play() {
+    mbPlayEn(item.audio);
+  }
+
+  document.getElementById("mblPlay").onclick = play;
+
+  container.querySelectorAll(".mb-option").forEach(function (btn) {
+    btn.onclick = function () {
+      if (btn.disabled) return;
+      container.querySelectorAll(".mb-option").forEach(function (x) { x.disabled = true; });
+      var ok = Number(btn.dataset.j) === item.ans;
+      if (ok) {
+        mbAddScore(b.id, 1);
+      } else {
+        container.querySelectorAll(".mb-option")[item.ans].classList.add("correct");
+      }
+      btn.classList.add(ok ? "correct" : "wrong");
+      document.getElementById("mblFeedback").textContent =
+        ok ? "Correcto." : "Correcto: " + item.opts[item.ans].t + " (" + item.opts[item.ans].es + ").";
+      document.getElementById("mblNext").disabled = false;
+    };
+  });
+
+  document.getElementById("mblNext").onclick = function () {
+    renderMasterListening(container, b, idx + 1);
+  };
+
+  mbSpeak("Escucha el audio y elige la respuesta correcta. Audio " + (idx + 1) + " de " + items.length + ".");
+  setTimeout(play, 700);
+}
+
+/* ---------- SPEAKING (10) ---------- */
+function renderMasterSpeaking(container, block, idx) {
+  var b = block;
+  var items = b.speaking;
+
+  if (idx >= items.length) {
+    renderMasterWriting(container, b);
+    return;
+  }
+
+  var item = items[idx];
+
+  var promptHtml = "";
+  if (item.prompt) {
+    promptHtml = '<div class="mb-question">' + escapeHtml(item.prompt) + '</div>';
+    if (item.promptEs) {
+      promptHtml += '<div class="mb-question-es">' + escapeHtml(item.promptEs) + '</div>';
+    }
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · SPEAKING</div>' +
+      '<h2 class="ob-title">Habla con AURIX</h2>' +
+      '<div class="mb-progress">Voz ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-speak-card">' +
+        '<div class="mb-speak-type">' + escapeHtml(item.tipo) + '</div>' +
+        promptHtml +
+        '<div class="mb-en">' + ssDisplayEn(item.en) + '</div>' +
+        '<div class="mb-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="mbsPlay" class="ob-small-btn">🔊 Escuchar modelo</button>' +
+          '<button id="mbsMic" class="btn">🎤 Practicar</button>' +
+          '<button id="mbsOk" class="ob-small-btn">✓ Lo dije bien</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="mbsFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mbsNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mbsPlay").onclick = function () {
+    mbPlayEn(item.en);
+  };
+
+  document.getElementById("mbsMic").onclick = function () {
+    if (typeof window.aurixOpenMic === "function") {
+      window.aurixOpenMic(item.en);
+    } else {
+      mbPlayEn(item.en);
+    }
+  };
+
+  document.getElementById("mbsOk").onclick = function () {
+    mbAddScore(b.id, 1);
+    document.getElementById("mbsFeedback").textContent = "Registrado. Sigue así.";
+    document.getElementById("mbsNext").disabled = false;
+  };
+
+  document.getElementById("mbsNext").onclick = function () {
+    renderMasterSpeaking(container, b, idx + 1);
+  };
+
+  mbPlayEn(item.en);
+}
+
+/* ---------- WRITING (10) ---------- */
+function renderMasterWriting(container, block) {
+  var b = block;
+  var key = b.key;
+
+  var rows = b.writing.map(function (item, i) {
+    return '<div class="s4-row">' +
+      '<div class="s4-es">' + (i + 1) + '. ' + escapeHtml(item.es) + '</div>' +
+      '<input id="mbw' + key + 'e' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+      '<div id="mbw' + key + 'f' + i + '" class="s4-answer"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · WRITING</div>' +
+      '<h2 class="ob-title">Escribe en inglés</h2>' +
+      '<p class="ob-sub">Traduce cada oración. El pronombre siempre se escribe.</p>' +
+      rows +
+      '<div id="mbwScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mbwCheck" class="btn">Revisar</button>' +
+        '<button id="mbwNext" class="btn" disabled>Completar bloque</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mbwCheck").onclick = function () {
+    var score = 0;
+    b.writing.forEach(function (item, i) {
+      var inp = document.getElementById("mbw" + key + "e" + i);
+      var fb = document.getElementById("mbw" + key + "f" + i);
+      var ok = item.en.indexOf(s4Norm(inp.value)) > -1;
+      if (ok) score++;
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+    mbAddScore(b.id, score);
+    document.getElementById("mbwScore").textContent = "Resultado: " + score + "/" + b.writing.length;
+    document.getElementById("mbwNext").disabled = false;
+  };
+
+  document.getElementById("mbwNext").onclick = function () {
+    renderMasterComplete(container, b);
+  };
+
+  mbSpeak("Escritura del bloque " + mbBadgeNum(b) + ". Traduce las diez oraciones al inglés. Todo inglés con su traducción.");
+}
+
+/* ---------- COMPLETAR ---------- */
+function renderMasterComplete(container, block) {
+  var b = block;
+  var total = mbScore(b.id);
+  var max = b.tabla.length + b.reading.preguntas.length + b.listening.length + b.speaking.length + b.writing.length;
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' COMPLETADO</div>' +
+      '<h2 class="ob-title">Formato Maestro superado</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Puntaje</div><div class="mp-profile-value">' + total + '/' + max + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Habilidades</div><div class="mp-profile-value">Reading · Listening · Speaking · Writing</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Regla #9 aplicada: todo inglés siempre con su traducción. ' + ssEnQuote("Excellent work.") + '</p>' +
+      '<div class="ob-actions"><button id="mbBack" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("mbBack").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  mbSpeak("Bloque " + mbBadgeNum(b) + " completado. Practicaste lectura, escucha, voz y escritura. " + ssEnQuote("Excellent work."));
+}
+
+/* ============================================
+   BLOQUE 19 · INTEGRACIÓN FINAL A1 (RENDERER DEDICADO)
+   Flujo: intro -> frases(10) -> párrafos EN-ES/ES-EN(4)
+          -> TEST TOEFL (reading 5, listening 5,
+             speaking 3, writing 3) -> completado.
+   Regla #9: todo inglés siempre con su traducción.
+============================================ */
+
+function esNorm(t) {
+  return String(t || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[.,!?¡¿;:]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function renderFinalFlow(container, block) {
+  var b = block;
+  var key = b.key;
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · INTEGRACIÓN FINAL A1</div>' +
+      '<h2 class="ob-title">' + escapeHtml(b.titulo) + '</h2>' +
+      '<p class="ob-sub">Cierre oficial del Nivel A1. Combina todo lo aprendido en B1-B18 y resuelve el Test Final estilo TOEFL iBT adaptado a A1.</p>' +
+      '<div class="s4-rule"><b>Regla de oro:</b> todo inglés siempre con su traducción. El pronombre siempre se escribe (solo los imperativos son la excepción).</div>' +
+      '<div class="ob-actions">' +
+        '<button id="mbf' + key + 'Start" class="btn">Comenzar Integración</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mbf" + key + "Start").onclick = function () {
+    renderFinalFrases(container, b);
+  };
+
+  mbSpeak(b.guion);
+}
+
+/* ---------- FRASES DE APLICACIÓN (10) ---------- */
+function renderFinalFrases(container, block) {
+  var b = block;
+  var key = b.key;
+
+  var rows = b.frases.map(function (item, i) {
+    return '<div class="s4-row">' +
+      '<div class="s4-es">' + (i + 1) + '. ' + escapeHtml(item.es) + '</div>' +
+      '<input id="mff' + key + 'e' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+      '<div id="mff' + key + 'f' + i + '" class="s4-answer"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · FRASES DE APLICACIÓN</div>' +
+      '<h2 class="ob-title">Frases de aplicación</h2>' +
+      '<p class="ob-sub">Escribe o di en inglés cada frase. Combina todo lo aprendido en B1-B18.</p>' +
+      rows +
+      '<div id="mffScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mffCheck" class="btn">Revisar</button>' +
+        '<button id="mffNext" class="btn" disabled>Continuar a Párrafos</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mffCheck").onclick = function () {
+    var score = 0;
+    b.frases.forEach(function (item, i) {
+      var inp = document.getElementById("mff" + key + "e" + i);
+      var fb = document.getElementById("mff" + key + "f" + i);
+      var ok = item.en.indexOf(s4Norm(inp.value)) > -1;
+      if (ok) score++;
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+    mbAddScore(b.id, score);
+    document.getElementById("mffScore").textContent = "Resultado: " + score + "/" + b.frases.length;
+    document.getElementById("mffNext").disabled = false;
+  };
+
+  document.getElementById("mffNext").onclick = function () {
+    renderFinalParrafos(container, b, 0);
+  };
+
+  mbSpeak("Frases de aplicación del bloque final. Traduce las diez frases al inglés. Todo inglés con su traducción.");
+}
+
+/* ---------- PÁRRAFOS INTEGRADOS (4) ---------- */
+function renderFinalParrafos(container, block, idx) {
+  var b = block;
+  var key = b.key;
+  var items = [];
+  b.parrafosEN.forEach(function (p) {
+    items.push({ dir: "en-es", en: p.en, es: p.es });
+  });
+  b.parrafosES.forEach(function (p) {
+    items.push({ dir: "es-en", en: p.en, es: p.es });
+  });
+
+  if (idx >= items.length) {
+    renderFinalTestReading(container, b);
+    return;
+  }
+
+  var item = items[idx];
+  var esEn = item.dir === "en-es";
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">BLOQUE ' + mbBadgeNum(b) + ' · PÁRRAFOS INTEGRADOS</div>' +
+      '<h2 class="ob-title">' + (esEn ? "Traduce al español" : "Traduce al inglés") + '</h2>' +
+      '<div class="mb-progress">Párrafo ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-passage">' +
+        '<div class="mb-passage-line">' + (esEn ? ssDisplayEn(item.en) : escapeHtml(item.es)) + '</div>' +
+      '</div>' +
+      '<div class="s4-row">' +
+        '<div class="s4-es">' + (esEn ? "Escribe la traducción al español:" : "Escribe la traducción al inglés:") + '</div>' +
+        '<textarea id="mfp' + key + 'ta" class="s4-input s4-textarea" placeholder="Escribe aquí tu traducción..."></textarea>' +
+        '<div id="mfp' + key + 'f" class="s4-answer"></div>' +
+      '</div>' +
+      '<div class="ob-actions">' +
+        '<button id="mfpCheck" class="btn">Revisar</button>' +
+        '<button id="mfpNext" class="btn" disabled>Continuar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mfpCheck").onclick = function () {
+    var ta = document.getElementById("mfp" + key + "ta");
+    var fb = document.getElementById("mfp" + key + "f");
+    var norm = esEn ? esNorm : s4Norm;
+    var source = esEn ? item.es : item.en;
+    var user = norm(ta.value);
+    var sentences = source.split(". ").map(norm).filter(function (s) { return s.length > 0; });
+    var ok = sentences.every(function (s) { return user.indexOf(s) > -1; });
+    if (ok) mbAddScore(b.id, 1);
+    ta.classList.remove("ok", "bad");
+    ta.classList.add(ok ? "ok" : "bad");
+    fb.textContent = ok ? "Correcto." : "Correcto: " + source + ".";
+    document.getElementById("mfpNext").disabled = false;
+  };
+
+  document.getElementById("mfpNext").onclick = function () {
+    renderFinalParrafos(container, b, idx + 1);
+  };
+
+  mbSpeak("Párrafo integrado " + (idx + 1) + " de " + items.length + ". Traduce el párrafo completo. Todo inglés con su traducción.");
+}
+
+/* ---------- TEST FINAL TOEFL · READING (5) ---------- */
+function renderFinalTestReading(container, block) {
+  var b = block;
+  var key = b.key;
+  var t = b.test.reading;
+
+  var passageHtml = '<div class="mb-passage"><div class="mb-passage-line">' + ssDisplayEn(t.pasaje.en) + '</div></div>';
+
+  var questions = t.preguntas.map(function (q, i) {
+    var opts = q.opts.map(function (o, j) {
+      return '<button type="button" class="mb-option" data-j="' + j + '">' +
+        '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+        '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+      '</button>';
+    }).join("");
+    return '<div class="mb-question-card">' +
+      '<div class="mb-question">' + (i + 1) + '. ' + escapeHtml(q.q) + '</div>' +
+      '<div class="mb-question-es">' + escapeHtml(q.qes) + '</div>' +
+      '<div class="mb-option-grid" data-q="' + i + '">' + opts + '</div>' +
+      '<div class="mb-feedback"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">TEST FINAL A1 · READING</div>' +
+      '<h2 class="ob-title">Lee y responde</h2>' +
+      '<p class="ob-sub">La traducción completa se muestra al terminar el test.</p>' +
+      passageHtml +
+      questions +
+      '<div id="mftrTrans" class="mb-es" style="display:none"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mftrNext" class="btn" disabled>Continuar a Listening</button>' +
+      '</div>' +
+    '</div>';
+
+  var answered = 0;
+  var total = t.preguntas.length;
+
+  container.querySelectorAll(".mb-question-card").forEach(function (card) {
+    var qIndex = Number(card.querySelector(".mb-option-grid").dataset.q);
+    var q = t.preguntas[qIndex];
+    var opts = card.querySelectorAll(".mb-option");
+
+    opts.forEach(function (btn) {
+      btn.onclick = function () {
+        if (btn.disabled) return;
+        opts.forEach(function (x) { x.disabled = true; });
+        var ok = Number(btn.dataset.j) === q.ans;
+        if (ok) {
+          mbAddScore(b.id, 1);
+        } else {
+          opts[q.ans].classList.add("correct");
+        }
+        btn.classList.add(ok ? "correct" : "wrong");
+        card.querySelector(".mb-feedback").textContent =
+          ok ? "Correcto." : "Correcto: " + q.opts[q.ans].t + " (" + q.opts[q.ans].es + ").";
+        answered++;
+        if (answered === total) {
+          var trans = document.getElementById("mftrTrans");
+          trans.style.display = "block";
+          trans.innerHTML = '<strong>Traducción completa:</strong> ' + escapeHtml(t.pasaje.es);
+          document.getElementById("mftrNext").disabled = false;
+        }
+      };
+    });
+  });
+
+  document.getElementById("mftrNext").onclick = function () {
+    renderFinalTestListening(container, b, 0);
+  };
+
+  mbSpeak("Test final. Reading. Lee el texto y responde las cinco preguntas. La traducción completa se muestra al terminar el test.");
+}
+
+/* ---------- TEST FINAL TOEFL · LISTENING (5) ---------- */
+function renderFinalTestListening(container, block, idx) {
+  var b = block;
+  var items = b.test.listening;
+
+  if (idx >= items.length) {
+    renderFinalTestSpeaking(container, b, 0);
+    return;
+  }
+
+  var item = items[idx];
+
+  var opts = item.opts.map(function (o, j) {
+    return '<button type="button" class="mb-option" data-j="' + j + '">' +
+      '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+      '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+    '</button>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">TEST FINAL A1 · LISTENING</div>' +
+      '<h2 class="ob-title">Escucha y elige</h2>' +
+      '<div class="mb-progress">Escucha ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-listen-card">' +
+        '<div class="mb-question">' + escapeHtml(item.q) + '</div>' +
+        '<div class="mb-question-es">' + escapeHtml(item.qes) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="mftlPlay" class="btn">🔊 Escuchar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-option-grid">' + opts + '</div>' +
+      '<div id="mftlFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mftlNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  function play() {
+    mbPlayEn(item.audio);
+  }
+
+  document.getElementById("mftlPlay").onclick = play;
+
+  container.querySelectorAll(".mb-option").forEach(function (btn) {
+    btn.onclick = function () {
+      if (btn.disabled) return;
+      container.querySelectorAll(".mb-option").forEach(function (x) { x.disabled = true; });
+      var ok = Number(btn.dataset.j) === item.ans;
+      if (ok) {
+        mbAddScore(b.id, 1);
+      } else {
+        container.querySelectorAll(".mb-option")[item.ans].classList.add("correct");
+      }
+      btn.classList.add(ok ? "correct" : "wrong");
+      document.getElementById("mftlFeedback").textContent =
+        ok ? "Correcto." : "Correcto: " + item.opts[item.ans].t + " (" + item.opts[item.ans].es + ").";
+      document.getElementById("mftlNext").disabled = false;
+    };
+  });
+
+  document.getElementById("mftlNext").onclick = function () {
+    renderFinalTestListening(container, b, idx + 1);
+  };
+
+  mbSpeak("Test final. Listening. Escucha el audio y elige la respuesta correcta. Audio " + (idx + 1) + " de " + items.length + ".");
+  setTimeout(play, 700);
+}
+
+/* ---------- TEST FINAL TOEFL · SPEAKING (3) ---------- */
+function renderFinalTestSpeaking(container, block, idx) {
+  var b = block;
+  var items = b.test.speaking;
+
+  if (idx >= items.length) {
+    renderFinalTestWriting(container, b);
+    return;
+  }
+
+  var item = items[idx];
+
+  var promptHtml = "";
+  if (item.prompt) {
+    promptHtml = '<div class="mb-question">' + escapeHtml(item.prompt) + '</div>';
+    if (item.promptEs) {
+      promptHtml += '<div class="mb-question-es">' + escapeHtml(item.promptEs) + '</div>';
+    }
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">TEST FINAL A1 · SPEAKING</div>' +
+      '<h2 class="ob-title">Habla con AURIX</h2>' +
+      '<div class="mb-progress">Voz ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-speak-card">' +
+        '<div class="mb-speak-type">' + escapeHtml(item.tipo) + '</div>' +
+        promptHtml +
+        '<div class="mb-en">' + ssDisplayEn(item.en) + '</div>' +
+        '<div class="mb-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="mftsPlay" class="ob-small-btn">🔊 Escuchar modelo</button>' +
+          '<button id="mftsMic" class="btn">🎤 Practicar</button>' +
+          '<button id="mftsOk" class="ob-small-btn">✓ Lo dije bien</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="mftsFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mftsNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mftsPlay").onclick = function () {
+    mbPlayEn(item.en);
+  };
+
+  document.getElementById("mftsMic").onclick = function () {
+    if (typeof window.aurixOpenMic === "function") {
+      window.aurixOpenMic(item.en);
+    } else {
+      mbPlayEn(item.en);
+    }
+  };
+
+  document.getElementById("mftsOk").onclick = function () {
+    mbAddScore(b.id, 1);
+    document.getElementById("mftsFeedback").textContent = "Registrado. Sigue así.";
+    document.getElementById("mftsNext").disabled = false;
+  };
+
+  document.getElementById("mftsNext").onclick = function () {
+    renderFinalTestSpeaking(container, b, idx + 1);
+  };
+
+  mbPlayEn(item.en);
+}
+
+/* ---------- TEST FINAL TOEFL · WRITING (3) ---------- */
+function renderFinalTestWriting(container, block) {
+  var b = block;
+  var key = b.key;
+
+  var rows = b.test.writing.map(function (item, i) {
+    return '<div class="s4-row">' +
+      '<div class="s4-es">' + (i + 1) + '. ' + escapeHtml(item.es) + '</div>' +
+      '<input id="mftw' + key + 'e' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+      '<div id="mftw' + key + 'f' + i + '" class="s4-answer"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">TEST FINAL A1 · WRITING</div>' +
+      '<h2 class="ob-title">Escribe en inglés</h2>' +
+      '<p class="ob-sub">Traduce cada oración. El pronombre siempre se escribe.</p>' +
+      rows +
+      '<div id="mftwScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="mftwCheck" class="btn">Revisar</button>' +
+        '<button id="mftwNext" class="btn" disabled>Terminar Test</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("mftwCheck").onclick = function () {
+    var score = 0;
+    b.test.writing.forEach(function (item, i) {
+      var inp = document.getElementById("mftw" + key + "e" + i);
+      var fb = document.getElementById("mftw" + key + "f" + i);
+      var ok = item.en.indexOf(s4Norm(inp.value)) > -1;
+      if (ok) score++;
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+    mbAddScore(b.id, score);
+    document.getElementById("mftwScore").textContent = "Resultado: " + score + "/" + b.test.writing.length;
+    document.getElementById("mftwNext").disabled = false;
+  };
+
+  document.getElementById("mftwNext").onclick = function () {
+    renderFinalComplete(container, b);
+  };
+
+  mbSpeak("Test final. Writing. Traduce las tres oraciones al inglés.");
+}
+
+/* ---------- INTEGRACIÓN COMPLETADA ---------- */
+function renderFinalComplete(container, block) {
+  var b = block;
+  var total = b.frases.length + b.parrafosEN.length + b.parrafosES.length +
+    b.test.reading.preguntas.length + b.test.listening.length +
+    b.test.speaking.length + b.test.writing.length;
+  var score = mbScore(b.id);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">NIVEL A1 COMPLETADO</div>' +
+      '<h2 class="ob-title">Integración Final superada</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Puntaje</div><div class="mp-profile-value">' + score + '/' + total + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Habilidades</div><div class="mp-profile-value">Reading · Listening · Speaking · Writing</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Cierre A1</div><div class="mp-profile-value">19 de 19 bloques · 100%</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Matriz MCER A1 cubierta: verb be, pronombres, posesivos, objeto, artículos, demostrativos, plurales, there is/are, presente simple y continuo, adverbios de frecuencia, preposiciones, can/can\'t, imperativos y preguntas básicas. ' + ssEnQuote("Excellent work.") + '</p>' +
+      '<div class="ob-actions"><button id="mfbBack" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("mfbBack").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  mbSpeak("Nivel A1 completado. Felicidades. Practicaste lectura, escucha, voz y escritura con diecinueve bloques. " + ssEnQuote("Excellent work."));
+}
+
+/* ============================================
+   EXÁMENES DE NIVEL A1 · RENDERIZADORES
+   DIAG y MID: Reading → Listening → Speaking → Writing.
+   PROD: párrafos EN (leer→escuchar→producir ES) y
+         párrafos ES (escribir→decir en voz alta).
+============================================ */
+
+function renderLevelTest(container, test) {
+  var t = test;
+  var total = t.tipo === "prod"
+    ? (t.parrafos.filter(function (p) { return p.dir === "en"; }).length * 3 +
+       t.parrafos.filter(function (p) { return p.dir === "es"; }).length * 2)
+    : (t.reading.preguntas.length + t.listening.length + t.speaking.length + t.writing.length);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + '</div>' +
+      '<h2 class="ob-title">' + escapeHtml(t.titulo) + '</h2>' +
+      '<p class="ob-sub">' + escapeHtml(t.guion) + '</p>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Habilidades</div><div class="mp-profile-value">Reading · Listening · Speaking · Writing</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Puntos</div><div class="mp-profile-value">' + total + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Nivel</div><div class="mp-profile-value">A1</div></div>' +
+      '</div>' +
+      '<div class="ob-actions"><button id="ltStart" class="btn">Comenzar Examen</button></div>' +
+    '</div>';
+
+  document.getElementById("ltStart").onclick = function () {
+    if (t.tipo === "prod") {
+      renderProdTest(container, t);
+    } else {
+      renderLTReading(container, t);
+    }
+  };
+
+  mbSpeak(t.guion);
+}
+
+function renderLTReading(container, test) {
+  var t = test;
+
+  var passageHtml = '<div class="mb-passage"><div class="mb-passage-line">' + ssDisplayEn(t.reading.pasaje.en) + '</div></div>';
+
+  var questions = t.reading.preguntas.map(function (q, i) {
+    var opts = q.opts.map(function (o, j) {
+      return '<button type="button" class="mb-option" data-j="' + j + '">' +
+        '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+        '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+      '</button>';
+    }).join("");
+    return '<div class="mb-question-card">' +
+      '<div class="mb-question">' + (i + 1) + '. ' + escapeHtml(q.q) + '</div>' +
+      '<div class="mb-question-es">' + escapeHtml(q.qes) + '</div>' +
+      '<div class="mb-option-grid" data-q="' + i + '">' + opts + '</div>' +
+      '<div class="mb-feedback"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + ' · READING</div>' +
+      '<h2 class="ob-title">Lee y responde</h2>' +
+      '<p class="ob-sub">La traducción completa se muestra al terminar el test.</p>' +
+      passageHtml +
+      questions +
+      '<div id="ltrTrans" class="mb-es" style="display:none"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="ltrNext" class="btn" disabled>Continuar a Listening</button>' +
+      '</div>' +
+    '</div>';
+
+  var answered = 0;
+  var total = t.reading.preguntas.length;
+
+  container.querySelectorAll(".mb-question-card").forEach(function (card) {
+    var qIndex = Number(card.querySelector(".mb-option-grid").dataset.q);
+    var q = t.reading.preguntas[qIndex];
+    var opts = card.querySelectorAll(".mb-option");
+
+    opts.forEach(function (btn) {
+      btn.onclick = function () {
+        if (btn.disabled) return;
+        opts.forEach(function (x) { x.disabled = true; });
+        var ok = Number(btn.dataset.j) === q.ans;
+        if (ok) {
+          mbAddScore(t.id, 1);
+        } else {
+          opts[q.ans].classList.add("correct");
+        }
+        btn.classList.add(ok ? "correct" : "wrong");
+        card.querySelector(".mb-feedback").textContent =
+          ok ? "Correcto." : "Correcto: " + q.opts[q.ans].t + " (" + q.opts[q.ans].es + ").";
+        answered++;
+        if (answered === total) {
+          var trans = document.getElementById("ltrTrans");
+          trans.style.display = "block";
+          trans.innerHTML = '<strong>Traducción completa:</strong> ' + escapeHtml(t.reading.pasaje.es);
+          document.getElementById("ltrNext").disabled = false;
+        }
+      };
+    });
+  });
+
+  document.getElementById("ltrNext").onclick = function () {
+    renderLTListening(container, t, 0);
+  };
+
+  mbSpeak("Examen. Reading. Lee el texto y responde las preguntas. La traducción completa se muestra al terminar el test.");
+}
+
+function renderLTListening(container, test, idx) {
+  var t = test;
+  var items = t.listening;
+
+  if (idx >= items.length) {
+    renderLTSpeaking(container, t, 0);
+    return;
+  }
+
+  var item = items[idx];
+
+  var opts = item.opts.map(function (o, j) {
+    return '<button type="button" class="mb-option" data-j="' + j + '">' +
+      '<span class="mb-opt-en">' + escapeHtml(o.t) + '</span>' +
+      '<span class="mb-opt-es">' + escapeHtml(o.es) + '</span>' +
+    '</button>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + ' · LISTENING</div>' +
+      '<h2 class="ob-title">Escucha y elige</h2>' +
+      '<div class="mb-progress">Escucha ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-listen-card">' +
+        '<div class="mb-question">' + escapeHtml(item.q) + '</div>' +
+        '<div class="mb-question-es">' + escapeHtml(item.qes) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="ltlPlay" class="btn">🔊 Escuchar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mb-option-grid">' + opts + '</div>' +
+      '<div id="ltlFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="ltlNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  function play() {
+    mbPlayEn(item.audio);
+  }
+
+  document.getElementById("ltlPlay").onclick = play;
+
+  container.querySelectorAll(".mb-option").forEach(function (btn) {
+    btn.onclick = function () {
+      if (btn.disabled) return;
+      container.querySelectorAll(".mb-option").forEach(function (x) { x.disabled = true; });
+      var ok = Number(btn.dataset.j) === item.ans;
+      if (ok) {
+        mbAddScore(t.id, 1);
+      } else {
+        container.querySelectorAll(".mb-option")[item.ans].classList.add("correct");
+      }
+      btn.classList.add(ok ? "correct" : "wrong");
+      document.getElementById("ltlFeedback").textContent =
+        ok ? "Correcto." : "Correcto: " + item.opts[item.ans].t + " (" + item.opts[item.ans].es + ").";
+      document.getElementById("ltlNext").disabled = false;
+    };
+  });
+
+  document.getElementById("ltlNext").onclick = function () {
+    renderLTListening(container, t, idx + 1);
+  };
+
+  mbSpeak("Examen. Listening. Escucha el audio y elige la respuesta correcta. Audio " + (idx + 1) + " de " + items.length + ".");
+  setTimeout(play, 700);
+}
+
+function renderLTSpeaking(container, test, idx) {
+  var t = test;
+  var items = t.speaking;
+
+  if (idx >= items.length) {
+    renderLTWriting(container, t);
+    return;
+  }
+
+  var item = items[idx];
+
+  var promptHtml = "";
+  if (item.prompt) {
+    promptHtml = '<div class="mb-question">' + escapeHtml(item.prompt) + '</div>';
+    if (item.promptEs) {
+      promptHtml += '<div class="mb-question-es">' + escapeHtml(item.promptEs) + '</div>';
+    }
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + ' · SPEAKING</div>' +
+      '<h2 class="ob-title">Habla con AURIX</h2>' +
+      '<div class="mb-progress">Voz ' + (idx + 1) + ' de ' + items.length + '</div>' +
+      '<div class="mb-speak-card">' +
+        '<div class="mb-speak-type">' + escapeHtml(item.tipo) + '</div>' +
+        promptHtml +
+        '<div class="mb-en">' + ssDisplayEn(item.en) + '</div>' +
+        '<div class="mb-es">' + escapeHtml(item.es) + '</div>' +
+        '<div class="mb-row-actions">' +
+          '<button id="ltsPlay" class="ob-small-btn">🔊 Escuchar modelo</button>' +
+          '<button id="ltsMic" class="btn">🎤 Practicar</button>' +
+          '<button id="ltsOk" class="ob-small-btn">✓ Lo dije bien</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="ltsFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="ltsNext" class="btn" disabled>Siguiente</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("ltsPlay").onclick = function () {
+    mbPlayEn(item.en);
+  };
+
+  document.getElementById("ltsMic").onclick = function () {
+    if (typeof window.aurixOpenMic === "function") {
+      window.aurixOpenMic(item.en);
+    } else {
+      mbPlayEn(item.en);
+    }
+  };
+
+  document.getElementById("ltsOk").onclick = function () {
+    mbAddScore(t.id, 1);
+    document.getElementById("ltsFeedback").textContent = "Registrado. Sigue así.";
+    document.getElementById("ltsNext").disabled = false;
+  };
+
+  document.getElementById("ltsNext").onclick = function () {
+    renderLTSpeaking(container, t, idx + 1);
+  };
+
+  mbPlayEn(item.en);
+}
+
+function renderLTWriting(container, test) {
+  var t = test;
+  var rows = t.writing.map(function (item, i) {
+    return '<div class="s4-row">' +
+      '<div class="s4-es">' + (i + 1) + '. ' + escapeHtml(item.es) + '</div>' +
+      '<input id="ltw' + i + '" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+      '<div id="ltwf' + i + '" class="s4-answer"></div>' +
+    '</div>';
+  }).join("");
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + ' · WRITING</div>' +
+      '<h2 class="ob-title">Escribe en inglés</h2>' +
+      '<p class="ob-sub">Traduce cada oración. El pronombre siempre se escribe.</p>' +
+      rows +
+      '<div id="ltwScore" class="s4-score"></div>' +
+      '<div class="ob-actions">' +
+        '<button id="ltwCheck" class="btn">Revisar</button>' +
+        '<button id="ltwNext" class="btn" disabled>Terminar Examen</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById("ltwCheck").onclick = function () {
+    var score = 0;
+    t.writing.forEach(function (item, i) {
+      var inp = document.getElementById("ltw" + i);
+      var fb = document.getElementById("ltwf" + i);
+      var ok = item.en.indexOf(s4Norm(inp.value)) > -1;
+      if (ok) score++;
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + item.en[0] + ".";
+    });
+    mbAddScore(t.id, score);
+    document.getElementById("ltwScore").textContent = "Resultado: " + score + "/" + t.writing.length;
+    document.getElementById("ltwNext").disabled = false;
+  };
+
+  document.getElementById("ltwNext").onclick = function () {
+    renderLTComplete(container, t);
+  };
+
+  mbSpeak("Examen. Writing. Traduce las oraciones al inglés.");
+}
+
+function renderLTComplete(container, test) {
+  var t = test;
+  var total = t.reading.preguntas.length + t.listening.length + t.speaking.length + t.writing.length;
+  var score = mbScore(t.id);
+  var pct = Math.round((score / total) * 100);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + t.id + ' COMPLETADO</div>' +
+      '<h2 class="ob-title">' + escapeHtml(t.titulo) + ' · superado</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Puntaje</div><div class="mp-profile-value">' + score + '/' + total + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Precisión</div><div class="mp-profile-value">' + pct + '%</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Habilidades</div><div class="mp-profile-value">Reading · Listening · Speaking · Writing</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">' + (pct >= 60 ? "Excelente trabajo." : "Buen intento. Puedes repasar los bloques y volver a intentarlo.") + ' ' + ssEnQuote("Keep going.") + '</p>' +
+      '<div class="ob-actions"><button id="ltBack" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("ltBack").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  mbSpeak("Examen completado. Puntaje: " + score + " de " + total + ". " + (pct >= 60 ? "Excelente trabajo." : "Buen intento. Puedes repasar los bloques."));
+}
+
+/* ---------- EXAMEN DE PRODUCCIÓN FINAL (por párrafos) ---------- */
+function renderProdTest(container, test) {
+  var steps = [];
+  test.parrafos.forEach(function (p) {
+    if (p.dir === "en") {
+      steps.push({ kind: "read", p: p });
+      steps.push({ kind: "listen", p: p });
+      steps.push({ kind: "prodES", p: p });
+    } else {
+      steps.push({ kind: "write", p: p });
+      steps.push({ kind: "speak", p: p });
+    }
+  });
+  renderProdStep(container, test, steps, 0);
+}
+
+function renderProdStep(container, test, steps, idx) {
+  if (idx >= steps.length) {
+    renderProdComplete(container, test, steps.length);
+    return;
+  }
+
+  var step = steps[idx];
+  var p = step.p;
+  var num = idx + 1;
+  var total = steps.length;
+
+  var kindLabel = {
+    read: "READING · Lee el párrafo en inglés",
+    listen: "LISTENING · Escúchalo, sin leer",
+    prodES: "PRODUCCIÓN ES · Escríbelo en español",
+    write: "WRITING · Escríbelo en inglés",
+    speak: "SPEAKING · Léelo en voz alta"
+  }[step.kind];
+
+  var inner = "";
+
+  if (step.kind === "read") {
+    inner =
+      '<div class="mb-passage"><div class="mb-passage-line">' + ssDisplayEn(p.en) + '</div></div>' +
+      '<div class="mb-es">' + escapeHtml(p.es) + '</div>' +
+      '<div class="ob-actions"><button id="psNext" class="btn">Lo leí · Continuar</button></div>';
+  } else if (step.kind === "listen") {
+    inner =
+      '<p class="ob-sub">Audio sin texto: escucha el mismo párrafo.</p>' +
+      '<div class="mb-row-actions"><button id="psPlay" class="btn">🔊 Escuchar</button></div>' +
+      '<div class="ob-actions"><button id="psNext" class="btn">Escuché · Continuar</button></div>';
+  } else if (step.kind === "prodES") {
+    inner =
+      '<p class="ob-sub">Escríbelo y dilo en español.</p>' +
+      '<div class="s4-row">' +
+        '<div class="s4-es">Escribe en español:</div>' +
+        '<input id="psInput" class="s4-input" type="text" placeholder="Escribe en español...">' +
+        '<div id="psFeedback" class="s4-answer"></div>' +
+      '</div>' +
+      '<div class="ob-actions">' +
+        '<button id="psCheck" class="btn">Revisar</button>' +
+        '<button id="psNext" class="btn" disabled>Continuar</button>' +
+      '</div>';
+  } else if (step.kind === "write") {
+    inner =
+      '<p class="ob-sub">Escribe en inglés este párrafo en español.</p>' +
+      '<div class="mb-es">' + escapeHtml(p.es) + '</div>' +
+      '<div class="s4-row">' +
+        '<div class="s4-es">Escribe en inglés:</div>' +
+        '<input id="psInput" class="s4-input" type="text" placeholder="Escribe en inglés...">' +
+        '<div id="psFeedback" class="s4-answer"></div>' +
+      '</div>' +
+      '<div class="ob-actions">' +
+        '<button id="psCheck" class="btn">Revisar</button>' +
+        '<button id="psNext" class="btn" disabled>Continuar</button>' +
+      '</div>';
+  } else if (step.kind === "speak") {
+    inner =
+      '<p class="ob-sub">Léelo en voz alta.</p>' +
+      '<div class="mb-en">' + ssDisplayEn(p.en) + '</div>' +
+      '<div class="mb-es">' + escapeHtml(p.es) + '</div>' +
+      '<div class="mb-row-actions">' +
+        '<button id="psPlay" class="ob-small-btn">🔊 Escuchar modelo</button>' +
+        '<button id="psMic" class="btn">🎤 Practicar</button>' +
+        '<button id="psOk" class="ob-small-btn">✓ Lo dije bien</button>' +
+      '</div>' +
+      '<div id="psFeedback" class="mb-feedback"></div>' +
+      '<div class="ob-actions"><button id="psNext" class="btn" disabled>Siguiente</button></div>';
+  }
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + test.id + ' · PRODUCCIÓN</div>' +
+      '<h2 class="ob-title">' + kindLabel + '</h2>' +
+      '<div class="mb-progress">Paso ' + num + ' de ' + total + '</div>' +
+      inner +
+    '</div>';
+
+  if (step.kind === "read") {
+    document.getElementById("psNext").onclick = function () {
+      mbAddScore(test.id, 1);
+      renderProdStep(container, test, steps, idx + 1);
+    };
+  } else if (step.kind === "listen") {
+    document.getElementById("psPlay").onclick = function () {
+      mbPlayEn(p.en);
+    };
+    document.getElementById("psNext").onclick = function () {
+      mbAddScore(test.id, 1);
+      renderProdStep(container, test, steps, idx + 1);
+    };
+    setTimeout(function () { mbPlayEn(p.en); }, 600);
+  } else if (step.kind === "prodES") {
+    document.getElementById("psCheck").onclick = function () {
+      var inp = document.getElementById("psInput");
+      var fb = document.getElementById("psFeedback");
+      var ok = esNorm(inp.value) === esNorm(p.es);
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + p.es;
+      if (ok) mbAddScore(test.id, 1);
+      document.getElementById("psNext").disabled = false;
+    };
+    document.getElementById("psNext").onclick = function () {
+      renderProdStep(container, test, steps, idx + 1);
+    };
+  } else if (step.kind === "write") {
+    document.getElementById("psCheck").onclick = function () {
+      var inp = document.getElementById("psInput");
+      var fb = document.getElementById("psFeedback");
+      var ok = s4Norm(inp.value) === s4Norm(p.en);
+      inp.classList.remove("ok", "bad");
+      inp.classList.add(ok ? "ok" : "bad");
+      fb.textContent = ok ? "Correcto." : "Correcto: " + p.en;
+      if (ok) mbAddScore(test.id, 1);
+      document.getElementById("psNext").disabled = false;
+    };
+    document.getElementById("psNext").onclick = function () {
+      renderProdStep(container, test, steps, idx + 1);
+    };
+  } else if (step.kind === "speak") {
+    document.getElementById("psPlay").onclick = function () {
+      mbPlayEn(p.en);
+    };
+    document.getElementById("psMic").onclick = function () {
+      if (typeof window.aurixOpenMic === "function") {
+        window.aurixOpenMic(p.en);
+      } else {
+        mbPlayEn(p.en);
+      }
+    };
+    document.getElementById("psOk").onclick = function () {
+      mbAddScore(test.id, 1);
+      document.getElementById("psFeedback").textContent = "Registrado. Sigue así.";
+      document.getElementById("psNext").disabled = false;
+    };
+    document.getElementById("psNext").onclick = function () {
+      renderProdStep(container, test, steps, idx + 1);
+    };
+    mbPlayEn(p.en);
+  }
+}
+
+function renderProdComplete(container, test, total) {
+  var score = mbScore(test.id);
+  var pct = Math.round((score / total) * 100);
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">' + test.id + ' COMPLETADO</div>' +
+      '<h2 class="ob-title">Nivel A1 · Producción superada</h2>' +
+      '<div class="mp-profile-summary">' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Puntaje</div><div class="mp-profile-value">' + score + '/' + total + '</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Precisión</div><div class="mp-profile-value">' + pct + '%</div></div>' +
+        '<div class="mp-profile-item"><div class="mp-profile-label">Habilidades</div><div class="mp-profile-value">Reading · Listening · Writing · Speaking</div></div>' +
+      '</div>' +
+      '<p class="ob-sub">Producción oral y escrita del nivel A1 evaluada por párrafos. ' + ssEnQuote("Great job.") + '</p>' +
+      '<div class="ob-actions"><button id="pbBack" class="btn">Volver al panel</button></div>' +
+    '</div>';
+
+  document.getElementById("pbBack").onclick = function () {
+    renderSessionsPanel(container);
+  };
+
+  mbSpeak("Examen de producción final completado. Puntaje: " + score + " de " + total + ". " + (pct >= 60 ? "Gran trabajo." : "Buen intento. Puedes repasar los bloques."));
+}
+
+/* ---------- TARJETAS DEL PANEL ---------- */
+function mbTestCard(t) {
+  var status = t.tipo === "prod" ? "Examen Final · Producción"
+    : t.tipo === "mid" ? "Examen · Mitad de Nivel"
+    : "Examen · Línea Base";
+  var badge = String(t.id).replace("TEST-", "").replace("-FINAL-A1", "").replace("-A1", "");
+  return '<div class="ss-card available">' +
+      '<span class="ss-badge next">' + badge + '</span>' +
+      '<div class="ss-title">' + escapeHtml(t.titulo) + '</div>' +
+      '<div class="ss-status">' + status + '</div>' +
+      '<button id="mbBtn' + t.key + '" class="ob-small-btn">Iniciar</button>' +
+    '</div>';
+}
+
+function mbPanelCards() {
+  var html = "";
+
+  LEVEL_TESTS.forEach(function (t) {
+    if (t.posicion === "inicio") html += mbTestCard(t);
+  });
+
+  MB_PENDING.forEach(function (p) {
+    html +=
+      '<div class="ss-card locked">' +
+        '<span class="ss-badge locked">' + p.id.replace("N1-", "") + '</span>' +
+        '<div class="ss-title">' + escapeHtml(p.titulo) + '</div>' +
+        '<div class="ss-status">Próximamente</div>' +
+      '</div>';
+  });
+
+  LEVEL_TESTS.forEach(function (t) {
+    if (t.posicion === "medio") html += mbTestCard(t);
+  });
+
+  MASTER_BLOCKS.forEach(function (b) {
+    var status = b.tipo === "final" ? "Integración Final · A1" : "Formato Maestro · A1";
+    html +=
+      '<div class="ss-card available">' +
+        '<span class="ss-badge next">' + mbBadgeNum(b) + '</span>' +
+        '<div class="ss-title">' + escapeHtml(b.titulo) + '</div>' +
+        '<div class="ss-status">' + status + '</div>' +
+        '<button id="mbBtn' + b.key + '" class="ob-small-btn">Iniciar</button>' +
+      '</div>';
+  });
+
+  LEVEL_TESTS.forEach(function (t) {
+    if (t.posicion === "final") html += mbTestCard(t);
+  });
+
+  return html;
+}
+
+function mbBindPanelButtons(container) {
+  MASTER_BLOCKS.forEach(function (b) {
+    var btn = document.getElementById("mbBtn" + b.key);
+    if (btn) {
+      btn.onclick = function () {
+        renderMasterFlow(container, b);
+      };
+    }
+  });
+
+  LEVEL_TESTS.forEach(function (t) {
+    var btn = document.getElementById("mbBtn" + t.key);
+    if (btn) {
+      btn.onclick = function () {
+        renderLevelTest(container, t);
+      };
+    }
+  });
+}
