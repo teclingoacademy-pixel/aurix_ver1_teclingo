@@ -291,6 +291,12 @@ startDot.addEventListener("click", function () {
   startActivation();
 });
 
+document.getElementById("tryCoachBtn").addEventListener("click", function () {
+  if (window.AurixAudio) {
+    window.AurixAudio.playIgnition();
+  }
+});
+
 btnContinue.addEventListener("click", async function () {
   activationMessage.textContent = "Personalizando experiencia...";
 
@@ -1602,6 +1608,92 @@ startExperience();
 
     document.body.appendChild(btn);
 
+    var topBtn = document.createElement("button");
+    topBtn.id = "aurixPowerTop";
+    topBtn.type = "button";
+    topBtn.className = "aurix-power-top on";
+    topBtn.setAttribute("aria-label", "Encender o apagar AURIX");
+    topBtn.setAttribute("aria-pressed", "true");
+
+    topBtn.innerHTML =
+      '<span class="aurix-power-icon">⚡</span>' +
+      '<span class="aurix-power-text">AURIX</span>' +
+      '<span class="aurix-power-led"></span>';
+
+    document.body.appendChild(topBtn);
+
+    var hotspot = document.createElement("div");
+    hotspot.id = "aurixPowerHotspot";
+    hotspot.className = "aurix-power-hotspot";
+    hotspot.setAttribute("role", "button");
+    hotspot.setAttribute("tabindex", "0");
+    hotspot.setAttribute("aria-label", "Mostrar botón de encendido");
+    document.body.appendChild(hotspot);
+
+    var topHideTimer = null;
+
+    function showTopButton(hold) {
+      topBtn.classList.remove("hidden");
+
+      if (topHideTimer) {
+        clearTimeout(topHideTimer);
+      }
+
+      var ms = typeof hold === "number" ? hold : 6000;
+
+      topHideTimer = setTimeout(function () {
+        topBtn.classList.add("hidden");
+        topHideTimer = null;
+      }, ms);
+    }
+
+    function hideTopButton() {
+      if (topHideTimer) {
+        clearTimeout(topHideTimer);
+        topHideTimer = null;
+      }
+
+      topBtn.classList.add("hidden");
+    }
+
+    function togglePower() {
+      if (powerAnimating) {
+        return;
+      }
+
+      powerAnimating = true;
+
+      (async function () {
+        try {
+          if (isPowerOn()) {
+            await powerOff();
+          } else {
+            await powerOn(false);
+          }
+        } finally {
+          powerAnimating = false;
+        }
+      })();
+    }
+
+    showTopButton();
+
+    topBtn.addEventListener("click", function () {
+      togglePower();
+      hideTopButton();
+    });
+
+    hotspot.addEventListener("click", function () {
+      showTopButton();
+    });
+
+    hotspot.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showTopButton();
+      }
+    });
+
     var overlay = document.createElement("div");
     overlay.id = "aurixOffOverlay";
     overlay.className = "aurix-off-overlay hidden";
@@ -1621,22 +1713,8 @@ startExperience();
     flash.className = "aurix-flash";
     document.body.appendChild(flash);
 
-    btn.addEventListener("click", async function () {
-      if (powerAnimating) {
-        return;
-      }
-
-      powerAnimating = true;
-
-      try {
-        if (isPowerOn()) {
-          await powerOff();
-        } else {
-          await powerOn(false);
-        }
-      } finally {
-        powerAnimating = false;
-      }
+    btn.addEventListener("click", function () {
+      togglePower();
     });
 
     overlay.addEventListener("click", async function () {
@@ -1677,6 +1755,7 @@ startExperience();
   function updatePowerUI() {
     var btn = document.getElementById("aurixPowerBtn");
     var overlay = document.getElementById("aurixOffOverlay");
+    var topBtn = document.getElementById("aurixPowerTop");
 
     if (!btn || !overlay) {
       return;
@@ -1687,6 +1766,12 @@ startExperience();
     btn.classList.toggle("on", on);
     btn.classList.toggle("off", !on);
     btn.setAttribute("aria-pressed", String(on));
+
+    if (topBtn) {
+      topBtn.classList.toggle("on", on);
+      topBtn.classList.toggle("off", !on);
+      topBtn.setAttribute("aria-pressed", String(on));
+    }
 
     overlay.classList.toggle("hidden", on);
   }

@@ -76,6 +76,15 @@ body {
   color: var(--white-70);
 }
 
+#splash2 {
+  gap: 2px !important;
+}
+
+#splash2 .splash-text.sub {
+  margin-top: -6px !important;
+  line-height: 1.3 !important;
+}
+
 .splash-action {
   margin-top: 24px;
   color: var(--white-50);
@@ -1132,6 +1141,106 @@ p {
   50% {
     opacity: 0.45;
     box-shadow: 0 0 8px rgba(74, 158, 255, 0.25);
+  }
+}
+
+/* ============================================
+   BOTON DE PODER SEPARADO (PARTE SUPERIOR)
+   Se oculta solo y vuelve tocando la esquina
+============================================ */
+
+.aurix-power-top {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 13010;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 15px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.28);
+  transition: 0.25s ease, opacity 0.35s ease, visibility 0.35s ease;
+  font-family: inherit;
+  margin: 0 !important;
+}
+
+.aurix-power-top:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+.aurix-power-top .aurix-power-icon {
+  font-size: 15px;
+}
+
+.aurix-power-top .aurix-power-text {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.aurix-power-top .aurix-power-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: 0.3s ease;
+}
+
+.aurix-power-top.on .aurix-power-led {
+  background: #4a9eff;
+  box-shadow: 0 0 18px rgba(74, 158, 255, 0.65);
+  animation: aurixPowerLed 2s ease-in-out infinite;
+}
+
+.aurix-power-top.off .aurix-power-led {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: none;
+  animation: none;
+}
+
+.aurix-power-top.hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-8px);
+}
+
+.aurix-power-hotspot {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 64px;
+  height: 64px;
+  z-index: 13005;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+@media (max-width: 720px) {
+  .aurix-power-top {
+    top: 14px;
+    right: 14px;
+    padding: 8px 12px;
+  }
+
+  .aurix-power-top .aurix-power-text {
+    font-size: 10px;
+  }
+
+  .aurix-power-hotspot {
+    width: 56px;
+    height: 56px;
   }
 }
 
@@ -2278,6 +2387,51 @@ body {
 
   #splash3 {
     gap: 22px !important;
+  }
+}
+
+/* ============================================
+   BOTON: PRUEBA NUESTRO COACH DE INGLES
+============================================ */
+
+.try-coach-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 13px 24px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: rgba(255, 255, 255, 0.92);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  transition: 0.25s ease;
+  cursor: pointer;
+  max-width: 90% !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: 42px !important;
+  margin: 0 !important;
+}
+
+.try-coach-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
+}
+
+@media (max-width: 720px) {
+  .try-coach-btn {
+    font-size: 11px !important;
+    padding: 12px 18px !important;
+    bottom: 30px !important;
   }
 }
 
