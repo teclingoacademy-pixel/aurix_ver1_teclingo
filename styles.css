@@ -62,6 +62,56 @@ body {
   object-fit: cover;
 }
 
+.play-audio-btn {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: rgba(74, 158, 255, 0.25);
+  border: 2px solid rgba(74, 158, 255, 0.6);
+  border-radius: 60px;
+  padding: 20px 36px;
+  color: var(--white);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease, visibility 0.4s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.play-audio-btn.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.play-audio-btn:hover {
+  transform: translateX(-50%) scale(1.05);
+  background: rgba(74, 158, 255, 0.4);
+  border-color: var(--blue);
+}
+
+.play-audio-btn:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
+.play-audio-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.play-audio-text {
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
 .splash-text {
   font-size: clamp(30px, 5vw, 64px);
   font-weight: 250;
@@ -499,6 +549,12 @@ p {
   width: 18px;
   height: 18px;
   accent-color: #4a9eff;
+}
+
+.aurix-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 12px 0;
 }
 
 @media (max-width: 720px) {
@@ -5939,5 +5995,105 @@ body.fit-overflow .ob-sub {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+/* ============================================
+   LAKE IDENTITY — Login/Registro (FASE 6)
+============================================ */
+
+.lake-login-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 4px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.lake-tab {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.02em;
+}
+
+.lake-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.lake-tab.active {
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(0, 240, 255, 0.06));
+  color: #00f0ff;
+  box-shadow:
+    0 0 12px rgba(0, 240, 255, 0.08),
+    inset 0 1px 0 rgba(0, 240, 255, 0.15);
+}
+
+.lake-error {
+  background: rgba(255, 80, 80, 0.1);
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  color: #ff6b6b;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.lake-status {
+  text-align: center;
+  color: rgba(0, 240, 255, 0.75);
+  font-size: 12px;
+  font-style: italic;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.lake-status::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(0, 240, 255, 0.3);
+  border-top-color: #00f0ff;
+  border-radius: 50%;
+  animation: lake-spin 0.7s linear infinite;
+}
+
+@keyframes lake-spin {
+  to { transform: rotate(360deg); }
+}
+
+.lake-skip-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.lake-skip-divider::before,
+.lake-skip-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
 }
 

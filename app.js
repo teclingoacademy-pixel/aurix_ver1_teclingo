@@ -53,6 +53,7 @@ const activation = document.getElementById("activation");
 
 const videoSplash = document.getElementById("videoSplash");
 const introVideo = document.getElementById("introVideo");
+const playAudioBtn = document.getElementById("playAudioBtn");
 let introAudioEnabled = false;
 
 const startDot = document.getElementById("startDot");
@@ -178,17 +179,25 @@ function playIntro(onDone) {
   showScreen(videoSplash);
 
   introVideo.currentTime = 0;
+  introVideo.muted = true;
 
   introVideo.onended = function () {
     if (typeof onDone === "function") onDone();
   };
 
-  introVideo.muted = true;
-  introVideo.play().then(function () {
-    introAudioEnabled = false;
-  }).catch(function () {
+  introVideo.play().catch(function () {
     if (typeof onDone === "function") onDone();
   });
+
+  playAudioBtn.classList.add("visible");
+
+  playAudioBtn.onclick = function () {
+    playAudioBtn.classList.remove("visible");
+    introVideo.muted = false;
+    introVideo.currentTime = 0;
+    introVideo.play().catch(function () {});
+    introAudioEnabled = true;
+  };
 }
 
 function enableIntroAudio() {
@@ -197,6 +206,7 @@ function enableIntroAudio() {
   if (!videoSplash.classList.contains("active")) return;
 
   introAudioEnabled = true;
+  playAudioBtn.classList.remove("visible");
 
   if (introVideo.muted) {
     introVideo.muted = false;
