@@ -183,14 +183,11 @@ function playIntro(onDone) {
     if (typeof onDone === "function") onDone();
   };
 
-  introVideo.muted = false;
-  introVideo.play().catch(function () {
-    introVideo.muted = true;
-    introVideo.currentTime = 0;
-
-    introVideo.play().catch(function () {
-      if (typeof onDone === "function") onDone();
-    });
+  introVideo.muted = true;
+  introVideo.play().then(function () {
+    introAudioEnabled = false;
+  }).catch(function () {
+    if (typeof onDone === "function") onDone();
   });
 }
 
@@ -385,6 +382,10 @@ function renderOnboardingStep(step) {
 
   if (step === "welcome") {
     renderWelcome(container);
+  }
+
+  if (step === "email") {
+    renderLakeEmail(container);
   }
 
   if (step === "placeholder") {
@@ -1010,7 +1011,7 @@ function renderWelcome(container) {
       await window.AurixTTS.speakRichText('**"Let us begin."**', "aurix");
     }
 
-    renderOnboardingStep("placeholder");
+    renderOnboardingStep("email");
   });
 
   speakObInstruction(
@@ -1020,6 +1021,181 @@ function renderWelcome(container) {
     "Tiempo diario: " + (appState.minutes ? appState.minutes + " minutos" : "Sin definir") + ". " +
     "Ruta: " + (appState.routeLabel || "Sin definir") + ". " +
     '**"Let us start."**',
+    container
+  );
+}
+
+/* ============================================
+   LAKE EMAIL — Registro/Login en el Identity Lake (FASE 6)
+============================================ */
+
+function renderLakeEmail(container) {
+  var savedEmail = (window.AurixIdentity && window.AurixIdentity.getEmail()) || "";
+
+  container.innerHTML =
+    '<div class="card glass ob-card">' +
+      '<div class="badge">AURIX OS</div>' +
+      '<h2 class="ob-title">Conecta tu cuenta</h2>' +
+      '<p class="ob-sub">Guarda tu progreso en la nube y accede desde cualquier dispositivo.</p>' +
+      '<div class="lake-login-tabs">' +
+        '<button id="lakeTabLogin" class="lake-tab active">Tengo cuenta</button>' +
+        '<button id="lakeTabRegister" class="lake-tab">Crear cuenta</button>' +
+      '</div>' +
+      '<div id="lakeLoginForm">' +
+        '<input id="lakeLoginEmail" class="ob-input" type="email" placeholder="tu@email.com" value="' + escapeHtml(savedEmail) + '" />' +
+        '<input id="lakeLoginPass" class="ob-input" type="password" placeholder="Contraseña" />' +
+        '<div id="lakeLoginError" class="lake-error hidden"></div>' +
+        '<div class="ob-actions">' +
+          '<button id="lakeLoginBtn" class="btn">Iniciar sesión</button>' +
+        '</div>' +
+      '</div>' +
+      '<div id="lakeRegisterForm" class="hidden">' +
+        '<input id="lakeRegName" class="ob-input" type="text" placeholder="Tu nombre" maxlength="40" value="' + escapeHtml(appState.nickname || "") + '" />' +
+        '<input id="lakeRegEmail" class="ob-input" type="email" placeholder="tu@email.com" value="' + escapeHtml(savedEmail) + '" />' +
+        '<input id="lakeRegPass" class="ob-input" type="password" placeholder="Contraseña (mínimo 6 caracteres)" />' +
+        '<input id="lakeRegPass2" class="ob-input" type="password" placeholder="Repite tu contraseña" />' +
+        '<div id="lakeRegError" class="lake-error hidden"></div>' +
+        '<div class="ob-actions">' +
+          '<button id="lakeRegBtn" class="btn">Crear cuenta</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="lake-skip-divider">' +
+        '<span>o</span>' +
+      '</div>' +
+      '<div class="ob-actions">' +
+        '<button id="lakeSkipBtn" class="ob-small-btn" style="opacity:0.5;font-size:12px;">Continuar sin cuenta</button>' +
+      '</div>' +
+      '<p id="lakeStatus" class="lake-status hidden"></p>' +
+    '</div>';
+
+  var tabLogin = document.getElementById("lakeTabLogin");
+  var tabRegister = document.getElementById("lakeTabRegister");
+  var formLogin = document.getElementById("lakeLoginForm");
+  var formRegister = document.getElementById("lakeRegisterForm");
+  var statusEl = document.getElementById("lakeStatus");
+
+  tabLogin.addEventListener("click", function () {
+    tabLogin.classList.add("active");
+    tabRegister.classList.remove("active");
+    formLogin.classList.remove("hidden");
+    formRegister.classList.add("hidden");
+  });
+
+  tabRegister.addEventListener("click", function () {
+    tabRegister.classList.add("active");
+    tabLogin.classList.remove("active");
+    formRegister.classList.remove("hidden");
+    formLogin.classList.add("hidden");
+  });
+
+  function showStatus(msg) {
+    statusEl.textContent = msg;
+    statusEl.classList.remove("hidden");
+  }
+
+  function hideStatus() {
+    statusEl.classList.add("hidden");
+  }
+
+  function showError(id, msg) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.textContent = msg;
+      el.classList.remove("hidden");
+    }
+  }
+
+  function hideError(id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  }
+
+  function goToDashboard() {
+    appState.onboardingCompleted = true;
+    if (typeof saveAppState === "function") saveAppState();
+    renderOnboardingStep("placeholder");
+  }
+
+  // --- Login ---
+  document.getElementById("lakeLoginBtn").addEventListener("click", function () {
+    var email = (document.getElementById("lakeLoginEmail").value || "").trim();
+    var pass = document.getElementById("lakeLoginPass").value || "";
+
+    hideError("lakeLoginError");
+    hideStatus();
+
+    if (!email) { showError("lakeLoginError", "Escribe tu email."); return; }
+    if (!pass) { showError("lakeLoginError", "Escribe tu contraseña."); return; }
+
+    showStatus("Conectando con el Lake...");
+    this.disabled = true;
+
+    var btn = this;
+    window.AurixIdentity.doLogin(email, pass).then(function (res) {
+      btn.disabled = false;
+      hideStatus();
+
+      if (res.ok) {
+        showStatus("¡Sesión iniciada!");
+        if (window.AurixTTS) {
+          window.AurixTTS.speakRichText("Sesión iniciada correctamente.", "narrator");
+        }
+        setTimeout(goToDashboard, 800);
+      } else {
+        showError("lakeLoginError",
+          res.error === "credenciales_invalidas"
+            ? "Email o contraseña incorrectos."
+            : "No se pudo iniciar sesión. Intenta de nuevo."
+        );
+      }
+    });
+  });
+
+  // --- Registro ---
+  document.getElementById("lakeRegBtn").addEventListener("click", function () {
+    var name = (document.getElementById("lakeRegName").value || "").trim();
+    var email = (document.getElementById("lakeRegEmail").value || "").trim();
+    var pass = document.getElementById("lakeRegPass").value || "";
+    var pass2 = document.getElementById("lakeRegPass2").value || "";
+
+    hideError("lakeRegError");
+    hideStatus();
+
+    if (!name) { showError("lakeRegError", "Escribe tu nombre."); return; }
+    if (!email) { showError("lakeRegError", "Escribe tu email."); return; }
+    if (!pass || pass.length < 6) { showError("lakeRegError", "La contraseña debe tener al menos 6 caracteres."); return; }
+    if (pass !== pass2) { showError("lakeRegError", "Las contraseñas no coinciden."); return; }
+
+    showStatus("Creando tu cuenta en el Lake...");
+    this.disabled = true;
+
+    var btn = this;
+    window.AurixIdentity.doRegister(email, name, pass, appState.nickname).then(function (res) {
+      btn.disabled = false;
+      hideStatus();
+
+      if (res.ok) {
+        showStatus("¡Cuenta creada!");
+        appState.nickname = appState.nickname || name;
+        if (window.AurixTTS) {
+          window.AurixTTS.speakRichText("Cuenta creada correctamente. Bienvenido, " + name + ".", "narrator");
+        }
+        setTimeout(goToDashboard, 800);
+      } else {
+        var msg = "No se pudo crear la cuenta.";
+        if (res.code === "ya_registrado") msg = "Este email ya tiene cuenta. Inicia sesión.";
+        showError("lakeRegError", msg);
+      }
+    });
+  });
+
+  // --- Saltar ---
+  document.getElementById("lakeSkipBtn").addEventListener("click", function () {
+    goToDashboard();
+  });
+
+  speakObInstruction(
+    "Conecta tu cuenta para guardar tu progreso. Puedes crear una cuenta nueva o iniciar sesión si ya tienes una.",
     container
   );
 }
@@ -7012,6 +7188,128 @@ function renderSessionsPanel(container) {
       window.aurixCloudLoad(id);
     }
   }, 1200);
+})();
+
+
+/* ============================================
+   AURIX IDENTITY — FASE 6: Integración con el Lake
+   Dual-write: estado local → AURIX API + eventos → Lake
+============================================ */
+
+(function () {
+  if (window.__aurixIdentityInjected) return;
+  window.__aurixIdentityInjected = true;
+
+  if (!window.AurixIdentity) {
+    console.warn("[AurixIdentity] identity.js no cargado. Sin integración Lake.");
+    return;
+  }
+
+  var LAKE = window.AurixIdentity;
+
+  // --- Boot: si hay email guardado, cargar perfil del Lake ---
+  function bootIdentity() {
+    var email = LAKE.getEmail();
+    if (!email) return;
+
+    LAKE.cargarPerfil().then(function (perfil) {
+      if (perfil) {
+        console.log("[AurixIdentity] Perfil cargado del Lake:", email);
+        if (perfil.nombre && !appState.nickname) {
+          appState.nickname = perfil.nombre;
+          if (typeof saveAppState === "function") saveAppState();
+        }
+      }
+    });
+  }
+
+  // --- Dual-write: interceptar saveAppState para sincronizar con el Lake ---
+  var _origSaveAppState2 = window.saveAppState;
+  window.saveAppState = function () {
+    if (_origSaveAppState2) _origSaveAppState2();
+    syncToLake();
+  };
+
+  var _lakeSyncTimer = null;
+  function syncToLake() {
+    clearTimeout(_lakeSyncTimer);
+    _lakeSyncTimer = setTimeout(_doLakeSync, 2000);
+  }
+
+  function _doLakeSync() {
+    var email = LAKE.getEmail();
+    if (!email) return;
+
+    // Actualizar perfil en el Lake con los datos locales del onboarding
+    var campos = {};
+    if (appState.level) campos.nivel = appState.level;
+    if (appState.goalLabel) campos.meta = appState.goalLabel;
+    if (appState.routeLabel) campos.intereses = appState.routeLabel;
+    if (appState.nickname) campos.nik_name = appState.nickname;
+
+    if (Object.keys(campos).length > 0) {
+      LAKE.actualizarPerfil(email, campos).catch(function () {});
+    }
+  }
+
+  // --- Logging de actividad en eventos clave ---
+
+  // Wrapper para log silencioso (fire-and-forget)
+  function logEvent(herramienta, accion, detalle) {
+    var email = LAKE.getEmail();
+    if (!email) return;
+    LAKE.logActividadGlobal(email, herramienta, accion, detalle).catch(function () {});
+  }
+
+  // 1. Onboarding completado → ya se loguea en renderLakeEmail al registrarse
+  // 2. Misión 1 completada
+  var _origRenderMissionComplete = window.renderMissionComplete;
+  window.renderMissionComplete = function (container) {
+    if (_origRenderMissionComplete) _origRenderMissionComplete(container);
+    logEvent("mission", "mission_1_completada", appState.nickname || "");
+  };
+
+  // 3. Práctica de micrófono (speaking)
+  var _origFinishMicScore = window.finishMicScore;
+  if (typeof _origFinishMicScore === "function") {
+    window.finishMicScore = function () {
+      if (_origFinishMicScore) _origFinishMicScore();
+      try {
+        var last = (appState.speaking && appState.speaking.lastPhrase) || "";
+        var score = (appState.speaking && appState.speaking.lastScore) || 0;
+        logEvent("speaking", "practica", last + " (" + score + "%)");
+      } catch (e) { /* ignorar */ }
+    };
+  }
+
+  // 4. Sesiones completadas (session 2, 3)
+  var _origSSSessionDone = window.ssSession2Done;
+  if (typeof _origSSSessionDone === "function") {
+    var _checkSession2 = window.ssSession2Done;
+    window.ssSession2Done = function () {
+      var was = _checkSession2();
+      var now = Boolean(appState.sessions && appState.sessions.session2Completed);
+      if (!was && now) logEvent("session", "session_2_completada", "");
+      return now;
+    };
+  }
+
+  var _checkSession3 = window.ssSession3Done;
+  if (typeof _checkSession3 === "function") {
+    window.ssSession3Done = function () {
+      var was = _checkSession3();
+      var now = Boolean(appState.sessions && appState.sessions.session3Completed);
+      if (!was && now) logEvent("session", "session_3_completada", "");
+      return now;
+    };
+  }
+
+  // --- Ejecutar al cargar ---
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootIdentity);
+  } else {
+    bootIdentity();
+  }
 })();
 
 
